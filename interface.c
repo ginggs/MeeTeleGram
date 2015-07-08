@@ -613,9 +613,8 @@ void do_stats (struct command *command, int arg_num, struct arg args[], struct i
 
 void do_show_license (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (!arg_num);
-  static char *b =
-#include "LICENSE.h"
-  ;
+  static char *b = ""//#include "LICENSE.h"
+          ;
   if (ev) { mprint_start (ev); }
   mprintf (ev, "%s", b);
   if (ev) { mprint_end (ev); }

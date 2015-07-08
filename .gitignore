@@ -1,2 +1,4 @@
 tgl
 *.o
+*.pro
+*.pro.user
