@@ -17,6 +17,14 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#if USE_PYTHON
+#include "python-tg.h"
+#endif
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -26,8 +34,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef READLINE_GNU
 #include <readline/readline.h>
 #include <readline/history.h>
+#else
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 #include <errno.h>
 #include <poll.h>
@@ -38,12 +51,20 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 
+#ifdef EVENT_V2
 #include <event2/event.h>
 #include <event2/bufferevent.h>
+#else
+#include <event.h>
+#include "event-old.h"
+#endif
 
 #include "interface.h"
 #include "telegram.h"
 #include "loop.h"
+#if USE_LUA
+#include "lua-tg.h"
+#endif
 
 #include <tgl/tgl.h>
 #include <tgl/tgl-binlog.h>
@@ -55,6 +76,7 @@
 int verbosity;
 extern int readline_disabled;
 
+extern int bot_mode;
 int binlog_read;
 extern char *default_username;
 extern char *auth_token;
@@ -69,6 +91,9 @@ extern int sync_from_start;
 
 extern int disable_output;
 extern int reset_authorization;
+
+extern int sfd;
+extern int usfd;
 
 void got_it (char *line, int len);
 void write_state_file (void);
@@ -111,14 +136,14 @@ static void one_string_read_end (void) {
 
 void do_get_string (struct tgl_state *TLS, const char *prompt, int flags, void (*cb)(struct tgl_state *, char *, void *), void *arg) {
   deactivate_readline ();
-  printf ("GET STR: %s ", prompt);
+  printf ("%s ", prompt);
   fflush (stdout);
   one_string_prompt = strdup (prompt);
   one_string_flags = flags;
   read_one_string = 1;
   on_string_cb = cb;
   string_cb_arg = arg;
-  one_string_len = 0;
+  one_string_len = 0;  
 }
 
 static void stdin_read_callback (evutil_socket_t fd, short what, void *arg) {
@@ -185,7 +210,7 @@ void net_loop (void) {
   }
   term_ev = event_new (TLS->ev_base, 0, EV_READ | EV_PERSIST, stdin_read_callback, 0);
   event_add (term_ev, 0);
-
+  
   int last_get_state = time (0);
   while (1) {
     event_base_loop (TLS->ev_base, EVLOOP_ONCE);
@@ -195,6 +220,14 @@ void net_loop (void) {
       event_free (term_ev);
       term_ev = 0;
     }
+
+    #ifdef USE_LUA
+      lua_do_all ();
+    #endif
+    
+    #ifdef USE_PYTHON
+      py_do_all ();
+    #endif
 
     if (safe_quit && !TLS->active_queries) {
       printf ("All done. Exit\n");
@@ -208,24 +241,24 @@ void net_loop (void) {
       tgl_do_lookup_state (TLS);
       last_get_state = time (0);
     }
-
+    
     write_state_file ();
     update_prompt ();
-
+    
     if (unknown_user_list_pos) {
       int i;
       for (i = 0; i < unknown_user_list_pos; i++) {
         tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
       }
       unknown_user_list_pos = 0;
-    }
+    }   
   }
 
   if (term_ev) {
     event_free (term_ev);
     term_ev = 0;
   }
-
+  
   if (verbosity >= E_DEBUG) {
     logprintf ("End of netloop\n");
   }
@@ -276,14 +309,14 @@ void read_state_file (void) {
   assert (version >= 0);
   int x[4];
   if (read (state_file_fd, x, 16) < 16) {
-    close (state_file_fd);
+    close (state_file_fd); 
     return;
   }
   int pts = x[0];
   int qts = x[1];
   int seq = x[2];
   int date = x[3];
-  close (state_file_fd);
+  close (state_file_fd); 
   bl_do_set_seq (TLS, seq);
   bl_do_set_pts (TLS, pts);
   bl_do_set_qts (TLS, qts);
@@ -312,12 +345,12 @@ void write_state_file (void) {
   x[4] = wseq;
   x[5] = wdate;
   assert (write (state_file_fd, x, 24) == 24);
-  close (state_file_fd);
+  close (state_file_fd); 
 }
 
 void write_dc (struct tgl_dc *DC, void *extra) {
   int auth_file_fd = *(int *)extra;
-  if (!DC) {
+  if (!DC) { 
     int x = 0;
     assert (write (auth_file_fd, &x, 4) == 4);
     return;
@@ -328,10 +361,10 @@ void write_dc (struct tgl_dc *DC, void *extra) {
 
   assert (DC->flags & TGLDCF_LOGGED_IN);
 
-  assert (write (auth_file_fd, &DC->port, 4) == 4);
-  int l = strlen (DC->ip);
+  assert (write (auth_file_fd, &DC->options[0]->port, 4) == 4);
+  int l = strlen (DC->options[0]->ip);
   assert (write (auth_file_fd, &l, 4) == 4);
-  assert (write (auth_file_fd, DC->ip, l) == l);
+  assert (write (auth_file_fd, DC->options[0]->ip, l) == l);
   assert (write (auth_file_fd, &DC->auth_key_id, 8) == 8);
   assert (write (auth_file_fd, DC->auth_key, 256) == 256);
 }
@@ -351,8 +384,8 @@ void write_auth_file (void) {
   close (auth_file_fd);
 }
 
-void write_secret_chat (tgl_peer_t *_P, void *extra) {
-  struct tgl_secret_chat *P = (void *)_P;
+void write_secret_chat (tgl_peer_t *Peer, void *extra) {
+  struct tgl_secret_chat *P = (void *)Peer;
   if (tgl_get_peer_type (P->id) != TGL_PEER_ENCR_CHAT) { return; }
   if (P->state != sc_ok) { return; }
   int *a = extra;
@@ -386,7 +419,7 @@ void write_secret_chat_file (void) {
   assert (secret_chat_fd >= 0);
   int x = SECRET_CHAT_FILE_MAGIC;
   assert (write (secret_chat_fd, &x, 4) == 4);
-  x = 2;
+  x = 2; 
   assert (write (secret_chat_fd, &x, 4) == 4); // version
   assert (write (secret_chat_fd, &x, 4) == 4); // num
 
@@ -458,7 +491,7 @@ void read_auth_file (void) {
   assert (x > 0);
   int dc_working_num;
   assert (read (auth_file_fd, &dc_working_num, 4) == 4);
-
+  
   int i;
   for (i = 0; i <= (int)x; i++) {
     int y;
@@ -511,7 +544,7 @@ void read_secret_chat (int fd, int v) {
     assert (read (fd, &out_seq_no, 4) == 4);
   }
 
-  bl_do_encr_chat_new (TLS, id,
+  bl_do_encr_chat_new (TLS, id, 
     &access_hash,
     &date,
     &admin_id,
@@ -528,7 +561,7 @@ void read_secret_chat (int fd, int v) {
     &key_fingerprint,
     TGLECF_CREATE | TGLECF_CREATED
   );
-
+    
 }
 
 void read_secret_chat_file (void) {
@@ -541,7 +574,7 @@ void read_secret_chat_file (void) {
   if (x != SECRET_CHAT_FILE_MAGIC) { close (secret_chat_fd); return; }
   int v = 0;
   assert (read (secret_chat_fd, &v, 4) == 4);
-  assert (v == 0 || v == 1 || v == 2); // version
+  assert (v == 0 || v == 1 || v == 2); // version  
   assert (read (secret_chat_fd, &x, 4) == 4);
   assert (x >= 0);
   while (x --> 0) {
@@ -600,7 +633,7 @@ void event_incoming (struct bufferevent *bev, short what, void *_arg) {
 
 static void accept_incoming (evutil_socket_t efd, short what, void *arg) {
   vlogprintf (E_WARNING, "Accepting incoming connection\n");
-  unsigned clilen = 0;
+  socklen_t clilen = 0;
   struct sockaddr_in cli_addr;
   int fd = accept (efd, (struct sockaddr *)&cli_addr, &clilen);
 
@@ -632,7 +665,14 @@ void on_started (struct tgl_state *TLS) {
     tgl_do_get_dialog_list (TLS, 100, 0, dlist_cb, 0);
     return;
   }
+  #ifdef USE_LUA
+    lua_diff_end ();
+  #endif
 
+  #ifdef USE_PYTHON
+    py_diff_end ();
+  #endif
+  
   if (start_command) {
     safe_quit = 1;
     while (*start_command) {
@@ -643,7 +683,7 @@ void on_started (struct tgl_state *TLS) {
       if (*start_command) {
         *start_command = 0;
         start_command ++;
-      }
+      } 
       interpreter_ex (start, 0);
     }
   }
@@ -657,16 +697,19 @@ int loop (void) {
   tgl_set_timer_methods (TLS, &tgl_libevent_timers);
   assert (TLS->timer_methods);
   tgl_set_download_directory (TLS, get_downloads_directory ());
-  tgl_register_app_id (TLS, TELEGRAM_CLI_APP_ID, TELEGRAM_CLI_APP_HASH);
+  tgl_register_app_id (TLS, TELEGRAM_CLI_APP_ID, TELEGRAM_CLI_APP_HASH); 
   tgl_set_app_version (TLS, "Telegram-cli " TELEGRAM_CLI_VERSION);
   if (ipv6_enabled) {
     tgl_enable_ipv6 (TLS);
+  }
+  if (bot_mode) {
+    tgl_enable_bot (TLS);
   }
   if (disable_link_preview) {
     tgl_disable_link_preview (TLS);
   }
   tgl_init (TLS);
-
+ 
   if (binlog_enabled) {
     double t = tglt_get_double_time ();
     if (verbosity >= E_DEBUG) {
@@ -684,9 +727,24 @@ int loop (void) {
   }
 
   binlog_read = 1;
-
+  #ifdef USE_LUA
+    lua_binlog_end ();
+  #endif
+  
+  #ifdef USE_PYTHON
+    py_binlog_end ();
+  #endif
+  
+  if (sfd >= 0) {
+    struct event *ev = event_new (TLS->ev_base, sfd, EV_READ | EV_PERSIST, accept_incoming, 0);
+    event_add (ev, 0);
+  }
+  if (usfd >= 0) {
+    struct event *ev = event_new (TLS->ev_base, usfd, EV_READ | EV_PERSIST, accept_incoming, 0);
+    event_add (ev, 0);
+  }
   update_prompt ();
-
+   
   if (reset_authorization) {
     tgl_peer_t *P = tgl_peer_get (TLS, TGL_MK_USER (TLS->our_id));
     if (P && P->user.phone && reset_authorization == 1) {

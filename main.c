@@ -17,6 +17,14 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef USE_PYTHON
+#  include "python-tg.h"
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -25,10 +33,23 @@
 #include <termios.h>
 #include <unistd.h>
 #include <assert.h>
+#ifdef __FreeBSD__
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
+#if (READLINE == GNU)
 #include <readline/readline.h>
+#else
+#include <editline/readline.h>
+#endif
+#ifdef EVENT_V2
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
+#else
+#include <event.h>
+#include "event-old.h"
+#endif
 
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -36,7 +57,13 @@
 #include <time.h>
 #include <fcntl.h>
 
+#ifdef HAVE_EXECINFO_H
+#include <execinfo.h>
+#endif
 #include <signal.h>
+#ifdef HAVE_LIBCONFIG
+#include <libconfig.h>
+#endif
 
 #include <grp.h>
 #include <arpa/inet.h>
@@ -47,6 +74,11 @@
 #include "interface.h"
 #include <tgl/tools.h>
 #include <getopt.h>
+
+#ifdef USE_LUA
+#  include "lua-tg.h"
+#endif
+
 
 #include <tgl/tgl.h>
 
@@ -68,6 +100,7 @@
   "# This is an empty config file\n" \
   "# Feel free to put something here\n"
 
+int bot_mode;
 int verbosity;
 int msg_num_mode;
 char *default_username;
@@ -100,7 +133,7 @@ int exit_code;
 struct tgl_state *TLS;
 
 void set_default_username (const char *s) {
-  if (default_username) {
+  if (default_username) { 
     tfree_str (default_username);
   }
   default_username = tstrdup (s);
@@ -270,7 +303,7 @@ void running_for_first_time (void) {
     close (auth_file_fd);
 
     printf ("[%s] created\n", config_filename);*/
-
+  
     /* create downloads directory */
     /*if (mkdir (downloads_directory, 0755) !=0) {
       perror ("creating download directory");
@@ -279,12 +312,128 @@ void running_for_first_time (void) {
   }
 }
 
+#ifdef HAVE_LIBCONFIG
+void parse_config_val (config_t *conf, char **s, char *param_name, const char *default_name, const char *path) {
+  static char buf[1000]; 
+  int l = 0;
+  if (prefix) {
+    l = strlen (prefix);
+    memcpy (buf, prefix, l);
+    buf[l ++] = '.';
+  }
+  *s = 0;
+  const char *r = 0;
+  strcpy (buf + l, param_name);
+  config_lookup_string (conf, buf, &r);
+  if (r) {
+    if (path && *r != '/') {
+      tasprintf (s, "%s/%s", path, r);
+    } else {
+      *s = tstrdup (r);
+    }
+  } else {
+    if (path && default_name) {
+      tasprintf (s, "%s/%s", path, default_name);
+    } else {
+      *s  = default_name ? tstrdup (default_name) : 0;
+    }
+  }
+}
+
+void parse_config (void) {
+  //config_filename = make_full_path (config_filename);
+  
+  config_t conf;
+  config_init (&conf);
+  if (config_read_file (&conf, config_filename) != CONFIG_TRUE) {
+    fprintf (stderr, "Can not read config '%s': error '%s' on the line %d\n", config_filename, config_error_text (&conf), config_error_line (&conf));
+    exit (2);
+  }
+
+  if (!prefix) {
+    config_lookup_string (&conf, "default_profile", (void *)&prefix);
+  }
+
+  static char buf[1000];
+  int l = 0;
+  if (prefix) {
+    l = strlen (prefix);
+    memcpy (buf, prefix, l);
+    buf[l ++] = '.';
+  }
+  
+  int test_mode = 0;
+  strcpy (buf + l, "test");
+  config_lookup_bool (&conf, buf, &test_mode);
+  if (test_mode) {
+    tgl_set_test_mode (TLS);
+  }
+  
+  strcpy (buf + l, "log_level");
+  long long t = log_level;
+  config_lookup_int (&conf, buf, (void *)&t);
+  log_level = t;
+  
+  if (!msg_num_mode) {
+    strcpy (buf + l, "msg_num");
+    config_lookup_bool (&conf, buf, &msg_num_mode);
+  }
+
+  parse_config_val (&conf, &config_directory, "config_directory", CONFIG_DIRECTORY, 0);
+  config_directory = make_full_path (config_directory);
+
+  parse_config_val (&conf, &auth_file_name, "auth_file", AUTH_KEY_FILE, config_directory);
+  parse_config_val (&conf, &downloads_directory, "downloads", DOWNLOADS_DIRECTORY, config_directory);
+  
+  if (!lua_file) {
+    parse_config_val (&conf, &lua_file, "lua_script", 0, config_directory);
+  }
+  
+  if (!python_file) {
+    parse_config_val (&conf, &python_file, "python_script", 0, config_directory);
+  }
+  
+  strcpy (buf + l, "binlog_enabled");
+  config_lookup_bool (&conf, buf, &binlog_enabled);
+  
+  int pfs_enabled = 0;
+  strcpy (buf + l, "pfs_enabled");
+  config_lookup_bool (&conf, buf, &pfs_enabled);
+  if (pfs_enabled) {
+    tgl_enable_pfs (TLS);
+  }
+
+  if (binlog_enabled) {
+    parse_config_val (&conf, &binlog_file_name, "binlog", BINLOG_FILE, config_directory);
+    tgl_set_binlog_mode (TLS, 1);
+    tgl_set_binlog_path (TLS, binlog_file_name);
+  } else {
+    tgl_set_binlog_mode (TLS, 0);
+    parse_config_val (&conf, &state_file_name, "state_file", STATE_FILE, config_directory);
+    parse_config_val (&conf, &secret_chat_file_name, "secret", SECRET_CHAT_FILE, config_directory);
+    //tgl_set_auth_file_path (auth_file_name);
+  }
+  tgl_set_download_directory (TLS, downloads_directory);
+  
+  if (!mkdir (config_directory, CONFIG_DIRECTORY_MODE)) {
+    if (!disable_output) {
+      printf ("[%s] created\n", config_directory);
+    }
+  }
+  if (!mkdir (downloads_directory, CONFIG_DIRECTORY_MODE)) {
+    if (!disable_output) {
+      printf ("[%s] created\n", downloads_directory);
+    }
+  }
+  config_destroy (&conf);
+}
+#else
 void parse_config (void) {
   if (!disable_output) {
     printf ("libconfig not enabled\n");
   }
   tasprintf (&downloads_directory, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, DOWNLOADS_DIRECTORY);
-
+  
   if (binlog_enabled) {
     tasprintf (&binlog_file_name, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, BINLOG_FILE);
     tgl_set_binlog_mode (TLS, 1);
@@ -303,6 +452,7 @@ void parse_config (void) {
     }
   }
 }
+#endif
 
 void inner_main (void) {
   loop ();
@@ -310,7 +460,7 @@ void inner_main (void) {
 
 void usage (void) {
   printf ("%s Usage\n", PROGNAME);
-
+    
   printf ("  --phone/-u                           specify username (would not be asked during authorization)\n");
   printf ("  --rsa-key/-k                         specify location of public key (possible multiple entries)\n");
   printf ("  --verbosity/-v                       increase verbosity (0-ERROR 1-WARNIN 2-NOTICE 3+-DEBUG-levels)\n");
@@ -324,6 +474,9 @@ void usage (void) {
   printf ("  --log-level/-l                       log level\n");
   printf ("  --sync-from-start/-f                 during authorization fetch all messages since registration\n");
   printf ("  --disable-auto-accept/-E             disable auto accept of encrypted chats\n");
+  #ifdef USE_LUA
+  printf ("  --lua-script/-s                      lua script file\n");
+  #endif
   printf ("  --wait-dialog-list/-W                send dialog_list query and wait for answer before reading input\n");
   printf ("  --disable-colors/-C                  disable color output\n");
   printf ("  --disable-readline/-R                disable readline\n");
@@ -340,6 +493,13 @@ void usage (void) {
   printf ("  --help/-h                            prints this help\n");
   printf ("  --accept-any-tcp                     accepts tcp connections from any src (only loopback by default)\n");
   printf ("  --disable-link-preview               disables server-side previews to links\n");
+  printf ("  --bot/-b                             bot mode\n");  
+  #ifdef USE_JSON
+  printf ("  --json                               prints answers and values in json format\n");
+  #endif
+  #ifdef USE_PYTHON
+  printf ("  --python-script/-Z <script-name>     python script file\n");
+  #endif
 
   exit (1);
 }
@@ -398,12 +558,60 @@ char *set_user_name;
 char *set_group_name;
 int accept_any_tcp;
 
+int change_user_group () {
+  char *username = set_user_name;
+  char *groupname = set_group_name;
+  struct passwd *pw;
+  /* lose root privileges if we have them */
+  if (getuid() == 0 || geteuid() == 0) {
+    if (username == 0 || *username == '\0') {
+      username = "telegramd";
+    }
+    if ((pw = getpwnam (username)) == 0) {
+      fprintf (stderr, "change_user_group: can't find the user %s to switch to\n", username);
+      return -1;
+    }
+    gid_t gid = pw->pw_gid;
+    if (setgroups (1, &gid) < 0) {
+      fprintf (stderr, "change_user_group: failed to clear supplementary groups list: %m\n");
+      return -1;
+    }
+
+    if (groupname) {
+      struct group *g = getgrnam (groupname);
+      if (g == NULL) {
+        fprintf (stderr, "change_user_group: can't find the group %s to switch to\n", groupname);
+        return -1;
+      }
+      gid = g->gr_gid;
+    }
+
+    if (setgid (gid) < 0) {
+      fprintf (stderr, "change_user_group: setgid (%d) failed. %m\n", (int) gid);
+      return -1;
+    }
+
+    if (setuid (pw->pw_uid) < 0) {
+      fprintf (stderr, "change_user_group: failed to assume identity of user %s\n", username);
+      return -1;
+    } else {
+      pw = getpwuid(getuid());
+      setenv("USER", pw->pw_name, 1);
+      setenv("HOME", pw->pw_dir, 1);
+      setenv("SHELL", pw->pw_shell, 1);
+    }
+  }
+  return 0;
+}
+
+char *unix_socket;
+
 void args_parse (int argc, char **argv) {
   TLS = tgl_state_alloc ();
 
   static struct option long_options[] = {
     {"debug-allocator", no_argument, 0,  1000 },
-    {"phone", required_argument, 0, 'u'},
+    {"phone", required_argument, 0, 'u'}, 
     {"rsa-key", required_argument, 0, 'k'},
     {"verbosity", no_argument, 0, 'v'},
     {"enable-msg-id", no_argument, 0, 'N'},
@@ -417,6 +625,9 @@ void args_parse (int argc, char **argv) {
     {"sync-from-start", no_argument, 0, 'f'},
     {"disable-auto-accept", no_argument, 0, 'E'},
     {"allow-weak-random", no_argument, 0, 'w'},
+#ifdef USE_LUA
+    {"lua-script", required_argument, 0, 's'},
+#endif
     {"wait-dialog-list", no_argument, 0, 'W'},
     {"disable-colors", no_argument, 0, 'C'},
     {"disable-readline", no_argument, 0, 'R'},
@@ -431,6 +642,7 @@ void args_parse (int argc, char **argv) {
     {"exec", required_argument, 0, 'e'},
     {"disable-names", no_argument, 0, 'I'},
     {"enable-ipv6", no_argument, 0, '6'},
+    {"bot", no_argument, 0, 'b'},
     {"help", no_argument, 0, 'h'},
     {"accept-any-tcp", no_argument, 0,  1001},
     {"disable-link-preview", no_argument, 0, 1002},
@@ -442,16 +654,25 @@ void args_parse (int argc, char **argv) {
 
 
   int opt = 0;
-  while ((opt = getopt_long (argc, argv, "u:hk:vNl:fEwWCRdL:DU:G:qP:S:e:I6"
+  while ((opt = getopt_long (argc, argv, "u:hk:vNl:fEwWCRdL:DU:G:qP:S:e:I6b"
 #ifdef HAVE_LIBCONFIG
   "c:p:"
 #else
   "B"
 #endif
+#ifdef USE_LUA
+  "s:"
+#endif
+#ifdef USE_PYTHON
+  "Z:"
+#endif
   , long_options, NULL
-
+  
   )) != -1) {
     switch (opt) {
+    case 'b':
+      bot_mode ++;
+      break;
     case 1000:
       tgl_allocator = &tgl_allocator_debug;
       break;
@@ -497,9 +718,19 @@ void args_parse (int argc, char **argv) {
     case 'w':
       allow_weak_random = 1;
       break;
+#ifdef USE_LUA
+    case 's':
+      lua_file = strdup (optarg);
+      break;
+#endif
     case 'W':
       wait_dialog_list = 1;
       break;
+#ifdef USE_PYTHON
+    case 'Z':
+      python_file = strdup (optarg);
+      break;
+#endif
     case 'C':
       disable_colors ++;
       break;
@@ -527,6 +758,9 @@ void args_parse (int argc, char **argv) {
     case 'P':
       port = atoi (optarg);
       break;
+    case 'S':
+      unix_socket = optarg;
+      break;
     case 'e':
       start_command = optarg;
       break;
@@ -550,24 +784,45 @@ void args_parse (int argc, char **argv) {
   }
 }
 
+#ifdef HAVE_EXECINFO_H
+void print_backtrace (void) {
+  void *buffer[255];
+  const int calls = backtrace (buffer, sizeof (buffer) / sizeof (void *));
+  backtrace_symbols_fd (buffer, calls, 1);
+}
+#else
 void print_backtrace (void) {
   if (write (1, "No libexec. Backtrace disabled\n", 32) < 0) {
     // Sad thing
   }
 }
+#endif
+
+int sfd;
+int usfd;
 
 void termination_signal_handler (int signum) {
   if (!readline_disabled) {
     rl_free_line_state ();
     rl_cleanup_after_signal ();
   }
-
-  if (write (1, "SIGNAL received\n", 18) < 0) {
+  
+  if (write (1, "SIGNAL received\n", 18) < 0) { 
     // Sad thing
   }
-
+ 
+  if (unix_socket) {
+    unlink (unix_socket);
+  }
+  
+  if (usfd > 0) {
+    close (usfd);
+  }
+  if (sfd > 0) {
+    close (sfd);
+  }
   print_backtrace ();
-
+  
   exit (EXIT_FAILURE);
 }
 
@@ -576,12 +831,12 @@ volatile int sigterm_cnt;
 void sig_term_handler (int signum __attribute__ ((unused))) {
   signal (signum, termination_signal_handler);
   //set_terminal_attributes ();
-  if (write (1, "SIGTERM/SIGINT received\n", 25) < 0) {
+  if (write (1, "SIGTERM/SIGINT received\n", 25) < 0) { 
     // Sad thing
   }
-  if (TLS && TLS->ev_base) {
-    event_base_loopbreak (TLS->ev_base);
-  }
+  //if (TLS && TLS->ev_base) {
+  //  event_base_loopbreak (TLS->ev_base);
+  //}
   sigterm_cnt ++;
 }
 
@@ -596,10 +851,21 @@ void do_halt (int error) {
     rl_cleanup_after_signal ();
   }
 
-  if (write (1, "halt\n", 5) < 0) {
+  if (write (1, "halt\n", 5) < 0) { 
     // Sad thing
   }
-
+ 
+  if (unix_socket) {
+    unlink (unix_socket);
+  }
+  
+  if (usfd > 0) {
+    close (usfd);
+  }
+  if (sfd > 0) {
+    close (sfd);
+  }
+ 
   if (exit_code) {
     retval = exit_code;
   } else {
@@ -617,7 +883,7 @@ int main (int argc, char **argv) {
   signal (SIGFPE, termination_signal_handler);
 
   signal (SIGPIPE, SIG_IGN);
-
+  
   signal (SIGTERM, sig_term_handler);
   signal (SIGINT, sig_term_handler);
 
@@ -625,8 +891,65 @@ int main (int argc, char **argv) {
 
 
   log_level = 10;
-
+  
   args_parse (argc, argv);
+  
+  change_user_group ();
+
+  if (port > 0) {
+    struct sockaddr_in serv_addr;
+    int yes = 1;
+    sfd = socket (AF_INET, SOCK_STREAM, 0);
+    if (sfd < 0) {
+      perror ("socket");
+      exit(1);
+    }
+
+    if(setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0) {
+      perror("setsockopt");
+      exit(1);
+    }
+    memset (&serv_addr, 0, sizeof (serv_addr));
+    
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = accept_any_tcp ? INADDR_ANY : htonl (0x7f000001);
+    serv_addr.sin_port = htons (port);
+ 
+    if (bind (sfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0) {
+      perror ("bind");
+      exit(1);
+    }
+
+    listen (sfd, 5);
+  } else {
+    sfd = -1;
+  }
+  
+  if (unix_socket) {
+    assert (strlen (unix_socket) < 100);
+    struct sockaddr_un serv_addr;
+
+    usfd = socket (AF_UNIX, SOCK_STREAM, 0);
+    if (usfd < 0) {
+      perror ("socket");
+      exit(1);
+    }
+
+    memset (&serv_addr, 0, sizeof (serv_addr));
+    
+    serv_addr.sun_family = AF_UNIX;
+
+    snprintf (serv_addr.sun_path, sizeof(serv_addr.sun_path), "%s", unix_socket);
+ 
+    if (bind (usfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0) {
+      perror ("bind");
+      exit(1);
+    }
+
+    listen (usfd, 5);    
+  } else {
+    usfd = -1;
+  }
 
   if (daemonize) {
     signal (SIGHUP, sighup_handler);
@@ -641,18 +964,39 @@ int main (int argc, char **argv) {
       "This is free software, and you are welcome to redistribute it\n"
       "under certain conditions; type `show_license' for details.\n"
       "Telegram-cli uses libtgl version " TGL_VERSION "\n"
+      "Telegram-cli includes software developed by the OpenSSL Project\n"
+      "for use in the OpenSSL Toolkit. (http://www.openssl.org/)\n"
+#ifdef USE_PYTHON
+      "Telegram-cli uses libpython version " PY_VERSION "\n"
+#endif
     );
   }
   running_for_first_time ();
   parse_config ();
 
+  #ifdef __FreeBSD__
+  tgl_set_rsa_key (TLS, "/usr/local/etc/" PROG_NAME "/server.pub");
+  #else
   tgl_set_rsa_key (TLS, "/etc/" PROG_NAME "/server.pub");
+  #endif
   tgl_set_rsa_key (TLS, "tg-server.pub");
 
 
   get_terminal_attributes ();
 
-  inner_main ();
+  #ifdef USE_LUA
+  if (lua_file) {
+    lua_init (lua_file);
+  }
+  #endif
+  #ifdef USE_PYTHON
+  if (python_file) {
+    py_init (python_file);
+  }
+  #endif
 
+
+  inner_main ();
+  
   return 0;
 }

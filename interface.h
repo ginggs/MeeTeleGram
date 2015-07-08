@@ -21,6 +21,7 @@
 #include <tgl/tgl-structures.h>
 #include <tgl/tgl-layout.h>
 
+#define EVENT_V2
 #define COLOR_RED "\033[0;31m"
 #define COLOR_REDB "\033[1;31m"
 #define COLOR_NORMAL "\033[0m"

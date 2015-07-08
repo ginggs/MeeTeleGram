@@ -17,6 +17,14 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef USE_PYTHON
+#  include "python-tg.h"
+#endif
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -27,8 +35,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef READLINE_GNU
 #include <readline/readline.h>
 #include <readline/history.h>
+#else
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 #include <unistd.h>
 
 //#include "queries.h"
@@ -36,9 +49,24 @@
 #include "interface.h"
 #include "telegram.h"
 
+#ifdef EVENT_V2
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
+#else
+#include <event.h>
+#include "event-old.h"
+#endif
+//#include "auto/constants.h"
+//#include "tools.h"
+//#include "structures.h"
+
+#ifdef USE_LUA
+#  include "lua-tg.h"
+#endif
+
+
+//#include "mtproto-common.h"
 
 #include <tgl/tgl.h>
 #include "loop.h"
@@ -47,7 +75,22 @@
 #define PATH_MAX 4096
 #endif
 
+#ifdef __APPLE__
+#define OPEN_BIN "open %s"
+#else
 #define OPEN_BIN "xdg-open %s"
+#endif
+
+#ifdef USE_JSON
+#  include <jansson.h>
+#  include "json-tg.h"
+#endif
+
+#include "tgl/mtproto-common.h"
+#include "auto/auto-store.h"
+#include "auto/auto-fetch-ds.h"
+#include "auto/auto-types.h"
+#include "auto/auto-free-ds.h"
 
 #define ALLOW_MULT 1
 char *default_prompt = "> ";
@@ -81,6 +124,8 @@ extern int disable_output;
 
 struct in_ev *notify_ev;
 
+extern int usfd;
+extern int sfd;
 extern int use_ids;
 
 extern int daemonize;
@@ -88,13 +133,12 @@ extern int daemonize;
 extern struct tgl_state *TLS;
 int readline_deactivated;
 
+void fail_interface (struct tgl_state *TLS, struct in_ev *ev, int error_code, const char *format, ...) __attribute__ (( format (printf, 4, 5)));
 void event_incoming (struct bufferevent *bev, short what, void *_arg);
 
 int is_same_word (const char *s, size_t l, const char *word) {
   return s && word && strlen (word) == l && !memcmp (s, word, l);
 }
-
-void fail_interface (struct tgl_state *TLS, struct in_ev *ev, int error_code, const char *format, ...) __attribute__ (( format (printf, 4, 5)));
 
 static void skip_wspc (void) {
   while (*line_ptr && ((unsigned char)*line_ptr) <= ' ') {
@@ -138,12 +182,12 @@ void socket_answer_end (struct in_ev *ev) {
 
 #define mprintf(ev,...) \
   if (ev) { socket_answer_add_printf (__VA_ARGS__); } \
-  else { printf (__VA_ARGS__); }
+  else { printf (__VA_ARGS__); } 
 
 #define mprint_start(ev,...) \
   if (!ev) { print_start (__VA_ARGS__); } \
   else { socket_answer_start (); }
-
+  
 #define mprint_end(ev,...) \
   if (!ev) { print_end (__VA_ARGS__); } \
   else { socket_answer_end (ev); }
@@ -235,13 +279,13 @@ static void next_token (void) {
 
 void next_token_end (void) {
   skip_wspc ();
-
+  
   if (*line_ptr && *line_ptr != '"' && *line_ptr != '\'') {
     cur_token_quoted = 0;
     cur_token = line_ptr;
     while (*line_ptr) { line_ptr ++; }
     cur_token_len = line_ptr - cur_token;
-    while (((unsigned char)cur_token[cur_token_len - 1]) <= ' ' && cur_token_len >= 0) {
+    while (((unsigned char)cur_token[cur_token_len - 1]) <= ' ' && cur_token_len >= 0) { 
       cur_token_len --;
     }
     assert (cur_token_len > 0);
@@ -252,7 +296,31 @@ void next_token_end (void) {
       next_token ();
       skip_wspc ();
       if (*line_ptr) {
-        cur_token_len = -1;
+        cur_token_len = -1; 
+      }
+    } else {
+      next_token ();
+    }
+  }
+}
+
+void next_token_end_ac (void) {
+  skip_wspc ();
+  
+  if (*line_ptr && *line_ptr != '"' && *line_ptr != '\'') {
+    cur_token_quoted = 0;
+    cur_token = line_ptr;
+    while (*line_ptr) { line_ptr ++; }
+    cur_token_len = line_ptr - cur_token;
+    assert (cur_token_len > 0);
+    cur_token_end_str = !force_end_mode;
+    return;
+  } else {
+    if (*line_ptr) {
+      next_token ();
+      skip_wspc ();
+      if (*line_ptr) {
+        cur_token_len = -1; 
       }
     } else {
       next_token ();
@@ -306,7 +374,7 @@ tgl_peer_id_t cur_token_user (void) {
   cur_token[cur_token_len] = 0;
 
   if (l >= 8 && !memcmp (s, "user#id", 7)) {
-    s += 7;
+    s += 7;    
     l -= 7;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -314,7 +382,7 @@ tgl_peer_id_t cur_token_user (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
   if (l >= 6 && !memcmp (s, "user#", 5)) {
-    s += 5;
+    s += 5;    
     l -= 5;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -322,9 +390,9 @@ tgl_peer_id_t cur_token_user (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
 
-  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s);
+  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s); 
   cur_token[cur_token_len] = c;
-
+  
   if (P && tgl_get_peer_type (P->id) == TGL_PEER_USER) {
     return P->id;
   } else {
@@ -339,9 +407,9 @@ tgl_peer_id_t cur_token_chat (void) {
 
   char c = cur_token[cur_token_len];
   cur_token[cur_token_len] = 0;
-
+  
   if (l >= 8 && !memcmp (s, "chat#id", 7)) {
-    s += 7;
+    s += 7;    
     l -= 7;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -349,7 +417,7 @@ tgl_peer_id_t cur_token_chat (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
   if (l >= 6 && !memcmp (s, "chat#", 5)) {
-    s += 5;
+    s += 5;    
     l -= 5;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -357,9 +425,9 @@ tgl_peer_id_t cur_token_chat (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
 
-  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s);
+  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s); 
   cur_token[cur_token_len] = c;
-
+  
   if (P && tgl_get_peer_type (P->id) == TGL_PEER_CHAT) {
     return P->id;
   } else {
@@ -373,9 +441,9 @@ tgl_peer_id_t cur_token_encr_chat (void) {
   char c = cur_token[cur_token_len];
   cur_token[cur_token_len] = 0;
 
-  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s);
+  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s); 
   cur_token[cur_token_len] = c;
-
+  
   if (P && tgl_get_peer_type (P->id) == TGL_PEER_ENCR_CHAT) {
     return P->id;
   } else {
@@ -389,9 +457,9 @@ tgl_peer_id_t cur_token_peer (void) {
   char *s = cur_token;
   char c = cur_token[cur_token_len];
   cur_token[cur_token_len] = 0;
-
+  
   if (l >= 8 && !memcmp (s, "user#id", 7)) {
-    s += 7;
+    s += 7;    
     l -= 7;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -399,7 +467,7 @@ tgl_peer_id_t cur_token_peer (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
   if (l >= 8 && !memcmp (s, "chat#id", 7)) {
-    s += 7;
+    s += 7;    
     l -= 7;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -407,7 +475,7 @@ tgl_peer_id_t cur_token_peer (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
   if (l >= 6 && !memcmp (s, "user#", 5)) {
-    s += 5;
+    s += 5;    
     l -= 5;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
@@ -415,17 +483,17 @@ tgl_peer_id_t cur_token_peer (void) {
     else { return TGL_PEER_NOT_FOUND; }
   }
   if (l >= 6 && !memcmp (s, "chat#", 5)) {
-    s += 5;
+    s += 5;    
     l -= 5;
     int r = atoi (s);
     cur_token[cur_token_len] = c;
     if (r >= 0) { return tgl_set_peer_id (TGL_PEER_CHAT, r); }
     else { return TGL_PEER_NOT_FOUND; }
   }
-
-  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s);
+  
+  tgl_peer_t *P = tgl_peer_get_by_name (TLS, s); 
   cur_token[cur_token_len] = c;
-
+  
   if (P) {
     return P->id;
   } else {
@@ -476,7 +544,7 @@ char *get_default_prompt (void) {
     l += snprintf (buf + l, 999 - l, "]" COLOR_NORMAL);
     l += snprintf (buf + l, 999 - l, "%s", default_prompt);
     return buf;
-  }
+  } 
   l += snprintf (buf + l, 999 - l, "%s", default_prompt);
   return buf;
 }
@@ -530,6 +598,7 @@ enum command_argument {
   ca_number,
   ca_double,
   ca_string_end,
+  ca_msg_string_end,
   ca_string,
   ca_modifier,
   ca_command,
@@ -613,8 +682,9 @@ void do_stats (struct command *command, int arg_num, struct arg args[], struct i
 
 void do_show_license (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (!arg_num);
-  static char *b = ""//#include "LICENSE.h"
-          ;
+  static char *b = 
+#include "LICENSE.h"
+  ;
   if (ev) { mprint_start (ev); }
   mprintf (ev, "%s", b);
   if (ev) { mprint_end (ev); }
@@ -637,7 +707,7 @@ void do_safe_quit (struct command *command, int arg_num, struct arg args[], stru
 void do_set (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   int num = args[1].num;
   if (!strcmp (args[0].str, "debug_verbosity")) {
-    tgl_set_verbosity (TLS, num);
+    tgl_set_verbosity (TLS, num); 
   } else if (!strcmp (args[0].str, "log_level")) {
     log_level = num;
   } else if (!strcmp (args[0].str, "msg_num")) {
@@ -681,7 +751,27 @@ void do_msg (struct command *command, int arg_num, struct arg args[], struct in_
   assert (arg_num == 2);
   if (ev) { ev->refcnt ++; }
   vlogprintf (E_DEBUG, "reply_id=%d, disable=%d\n", reply_id, disable_msg_preview);
-  tgl_do_send_message (TLS, args[0].P->id, ARG2STR(1), TGL_SEND_MSG_FLAG_REPLY(reply_id) | disable_msg_preview, print_msg_success_gw, ev);
+  tgl_do_send_message (TLS, args[0].P->id, ARG2STR(1), TGL_SEND_MSG_FLAG_REPLY(reply_id) | disable_msg_preview, NULL, print_msg_success_gw, ev);
+}
+
+void do_msg_kbd (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
+  assert (arg_num == 3);
+  if (ev) { ev->refcnt ++; }
+
+  clear_packet ();  
+  if (tglf_store_type (TLS, ARG2STR(1), TYPE_TO_PARAM (reply_markup)) < 0) {
+    fail_interface (TLS, ev, ENOSYS, "can not parse reply markup");    
+    return;
+  }
+  in_ptr = packet_buffer;
+  in_end = packet_ptr;
+
+  struct tl_ds_reply_markup *DS_RM = fetch_ds_type_reply_markup (TYPE_TO_PARAM (reply_markup));
+  assert (DS_RM);
+
+  tgl_do_send_message (TLS, args[0].P->id, ARG2STR(2), TGL_SEND_MSG_FLAG_REPLY(reply_id) | disable_msg_preview, DS_RM, print_msg_success_gw, ev);
+
+  free_ds_type_reply_markup (DS_RM, TYPE_TO_PARAM (reply_markup));
 }
 
 void do_reply (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
@@ -807,7 +897,7 @@ void do_broadcast (struct command *command, int arg_num, struct arg args[], stru
   int i;
   for (i = 0; i < arg_num - 1; i++) {
     ids[i] = args[i].P->id;
-  }
+  }  
   if (ev) { ev->refcnt ++; }
   tgl_do_send_broadcast (TLS, arg_num - 1, ids, args[arg_num - 1].str, strlen (args[arg_num - 1].str), disable_msg_preview, print_msg_list_success_gw, ev);
 }
@@ -815,6 +905,11 @@ void do_broadcast (struct command *command, int arg_num, struct arg args[], stru
 /* }}} */
 
 /* {{{ EDITING SELF PROFILE */
+
+void do_get_self(struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
+  if (ev) { ev->refcnt ++; }
+  tgl_do_get_user_info (TLS, TGL_MK_USER(TLS->our_id), 0, print_user_info_gw, ev);
+}
 
 void do_set_profile_photo (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (arg_num == 1);
@@ -859,7 +954,7 @@ void do_export_card (struct command *command, int arg_num, struct arg args[], st
 void do_chat_set_photo (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (arg_num == 2);
   if (ev) { ev->refcnt ++; }
-  tgl_do_set_chat_photo (TLS, args[0].P->id, args[1].str, print_success_gw, ev);
+  tgl_do_set_chat_photo (TLS, args[0].P->id, args[1].str, print_success_gw, ev); 
 }
 
 void do_rename_chat (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
@@ -885,7 +980,7 @@ void do_chat_del_user (struct command *command, int arg_num, struct arg args[], 
   if (ev) { ev->refcnt ++; }
   tgl_do_del_user_from_chat (TLS, args[0].P->id, args[1].P->id, print_success_gw, ev);
 }
-
+    
 void do_create_group_chat (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (arg_num >= 1 && arg_num <= 1000);
   static tgl_peer_id_t ids[1000];
@@ -895,7 +990,7 @@ void do_create_group_chat (struct command *command, int arg_num, struct arg args
   }
 
   if (ev) { ev->refcnt ++; }
-  tgl_do_create_group_chat (TLS, arg_num - 1, ids, ARG2STR (0), print_success_gw, ev);
+  tgl_do_create_group_chat (TLS, arg_num - 1, ids, ARG2STR (0), print_success_gw, ev);  
 }
 
 void do_export_chat_link (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
@@ -961,7 +1056,7 @@ void do_import_card (struct command *command, int arg_num, struct arg args[], st
       } else if (s[i] >= 'a' && s[i] <= 'f') {
         cur = cur * 16 + s[i] - 'a' + 10;
       } else if (s[i] == ':') {
-        if (pp >= 9) {
+        if (pp >= 9) { 
           ok = 0;
           break;
         }
@@ -1021,7 +1116,7 @@ void do_visualize_key (struct command *command, int arg_num, struct arg args[], 
   for (i = 0; i < 16; i++) {
     int x = buf[i];
     int j;
-    for (j = 0; j < 4; j ++) {
+    for (j = 0; j < 4; j ++) {    
       if (!ev) {
         mpush_color (ev, colors[x & 3]);
         mpush_color (ev, COLOR_INVERSE);
@@ -1050,8 +1145,8 @@ void do_visualize_key (struct command *command, int arg_num, struct arg args[], 
       }
       x = x >> 2;
     }
-    if (i & 1) {
-      mprintf (ev, "\n");
+    if (i & 1) { 
+      mprintf (ev, "\n"); 
     }
   }
   mprint_end (ev);
@@ -1074,16 +1169,16 @@ void do_dialog_list (struct command *command, int arg_num, struct arg args[], st
   tgl_do_get_dialog_list (TLS, args[0].num != NOT_FOUND ? args[0].num : 100, args[1].num != NOT_FOUND ? args[1].num : 0, print_dialog_list_gw, ev);
 }
 
-void do_contact_search (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
-  assert (arg_num == 2);
+void do_resolve_username (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
+  assert (arg_num == 1);
   if (ev) { ev->refcnt ++; }
-  tgl_do_contact_search (TLS, args[0].str, strlen (args[0].str), args[1].num == NOT_FOUND ? args[1].num : 10, print_user_list_gw, ev);
+  tgl_do_contact_search (TLS, args[0].str, strlen (args[0].str), print_user_gw, ev);
 }
 
 void do_contact_list (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
   assert (!arg_num);
   if (ev) { ev->refcnt ++; }
-  tgl_do_update_contact_list (TLS, print_user_list_gw, ev);
+  tgl_do_update_contact_list (TLS, print_user_list_gw, ev);  
 }
 
 /* }}} */
@@ -1206,25 +1301,25 @@ void do_search (struct command *command, int arg_num, struct arg args[], struct 
   }
   int limit;
   if (args[1].num != NOT_FOUND) {
-    limit = args[1].num;
+    limit = args[1].num; 
   } else {
     limit = 40;
   }
   int from;
   if (args[2].num != NOT_FOUND) {
-    from = args[2].num;
+    from = args[2].num; 
   } else {
     from = 0;
   }
   int to;
   if (args[3].num != NOT_FOUND) {
-    to = args[3].num;
+    to = args[3].num; 
   } else {
     to = 0;
   }
   int offset;
   if (args[4].num != NOT_FOUND) {
-    offset = args[4].num;
+    offset = args[4].num; 
   } else {
     offset = 0;
   }
@@ -1243,6 +1338,15 @@ void do_get_message (struct command *command, int arg_num, struct arg args[], st
   tgl_do_get_message (TLS, args[0].num, print_msg_gw, ev);
 }
 
+/* }}} */
+
+/* {{{ BOT */
+
+void do_start_bot (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
+  assert (arg_num == 3);
+  if (ev) { ev->refcnt ++; }
+  tgl_do_start_bot (TLS, args[0].P->id, args[1].P->id, ARG2STR(2), print_success_gw, ev);
+}
 /* }}} */
 
 extern char *default_username;
@@ -1293,7 +1397,7 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"chat_with_peer", {ca_peer, ca_none}, do_chat_with_peer, "chat_with_peer <peer>\tInterface option. All input will be treated as messages to this peer. Type /quit to end this mode", NULL},
   {"clear", {ca_none}, do_clear, "clear\tClears all data and exits. For debug.", NULL},
   {"contact_list", {ca_none}, do_contact_list, "contact_list\tPrints contact list", NULL},
-  {"contact_search", {ca_string, ca_number | ca_optional, ca_none}, do_contact_search, "contact_search username [limit]\tSearches contacts by username", NULL},
+  {"contact_search", {ca_string, ca_none}, do_resolve_username, "contact_search username\tSearches user by username", NULL},
   {"create_group_chat", {ca_string, ca_user, ca_period, ca_none}, do_create_group_chat, "create_group_chat <name> <user>+\tCreates group chat with users", NULL},
   {"create_secret_chat", {ca_user, ca_none}, do_create_secret_chat, "create_secret_chat <user>\tStarts creation of secret chat", NULL},
   {"del_contact", {ca_user, ca_none}, do_del_contact, "del_contact <user>\tDeletes contact from contact list", NULL},
@@ -1304,6 +1408,7 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"fwd", {ca_peer, ca_number, ca_period, ca_none}, do_fwd, "fwd <peer> <msg-id>+\tForwards message to peer. Forward to secret chats is forbidden", NULL},
   {"fwd_media", {ca_peer, ca_number, ca_none}, do_fwd_media, "fwd_media <peer> <msg-id>\tForwards message media to peer. Forward to secret chats is forbidden. Result slightly differs from fwd", NULL},
   {"get_message", {ca_number, ca_none}, do_get_message, "get_message <msg-id>\tGet message by id", NULL},
+  {"get_self", {ca_none}, do_get_self, "get_self \tGet our user info", NULL},
   {"help", {ca_none}, do_help, "help\tPrints this help", NULL},
   {"history", {ca_peer, ca_number | ca_optional, ca_number | ca_optional, ca_none}, do_history, "history <peer> [limit] [offset]\tPrints messages with this peer (most recent message lower). Also marks messages as read", NULL},
   {"import_card", {ca_string, ca_none}, do_import_card, "import_card <card>\tGets user by card and prints it name. You can then send messages to him as usual", NULL},
@@ -1320,11 +1425,12 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"load_video_thumb", {ca_number, ca_none}, do_load_video_thumb, "load_video_thumb <msg-id>\tDownloads file to downloads dirs. Prints file name after download end", NULL},
   {"main_session", {ca_none}, do_main_session, "main_session\tSends updates to this connection (or terminal). Useful only with listening socket", NULL},
   {"mark_read", {ca_peer, ca_none}, do_mark_read, "mark_read <peer>\tMarks messages with peer as read", NULL},
-  {"msg", {ca_peer, ca_string_end, ca_none}, do_msg, "msg <peer> <text>\tSends text message to peer", NULL},
+  {"msg", {ca_peer, ca_msg_string_end, ca_none}, do_msg, "msg <peer> <text>\tSends text message to peer", NULL},
+  {"msg_kbd", {ca_peer, ca_string, ca_msg_string_end, ca_none}, do_msg_kbd, "msg <peer> <kbd> <text>\tSends text message to peer with custom kbd", NULL},
   {"quit", {ca_none}, do_quit, "quit\tQuits immediately", NULL},
   {"rename_chat", {ca_chat, ca_string_end, ca_none}, do_rename_chat, "rename_chat <chat> <new name>\tRenames chat", NULL},
   {"rename_contact", {ca_user, ca_string, ca_string, ca_none}, do_rename_contact, "rename_contact <user> <first name> <last name>\tRenames contact", NULL},
-  {"reply", {ca_number, ca_string_end, ca_none}, do_reply, "reply <msg-id> <text>\tSends text reply to message", NULL},
+  {"reply", {ca_number, ca_msg_string_end, ca_none}, do_reply, "reply <msg-id> <text>\tSends text reply to message", NULL},
   {"reply_audio", {ca_number, ca_file_name, ca_none}, do_send_audio, "reply_audio <msg-id> <file>\tSends audio to peer", NULL},
   {"reply_contact", {ca_number, ca_string, ca_string, ca_string, ca_none}, do_reply_contact, "reply_contact <msg-id> <phone> <first-name> <last-name>\tSends contact (not necessary telegram user)", NULL},
   {"reply_document", {ca_number, ca_file_name, ca_none}, do_reply_document, "reply_document <msg-id> <file>\tSends document to peer", NULL},
@@ -1333,6 +1439,7 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"reply_photo", {ca_number, ca_file_name, ca_string_end | ca_optional, ca_none}, do_reply_photo, "reply_photo <msg-id> <file> [caption]\tSends photo to peer", NULL},
   //{"reply_text", {ca_number, ca_file_name_end, ca_none}, do_reply_text, "reply_text <msg-id> <file>\tSends contents of text file as plain text message", NULL},
   {"reply_video", {ca_number, ca_file_name, ca_none}, do_reply_video, "reply_video <msg-id> <file>\tSends video to peer", NULL},
+  {"resolve_username", {ca_string, ca_none}, do_resolve_username, "resolve_username username\tSearches user by username", NULL},
   //{"restore_msg", {ca_number, ca_none}, do_restore_msg, "restore_msg <msg-id>\tRestores message. Only available shortly (one hour?) after deletion", NULL},
   {"safe_quit", {ca_none}, do_safe_quit, "safe_quit\tWaits for all queries to end, then quits", NULL},
   {"search", {ca_peer | ca_optional, ca_number | ca_optional, ca_number | ca_optional, ca_number | ca_optional, ca_number | ca_optional, ca_string_end}, do_search, "search [peer] [limit] [from] [to] [offset] pattern\tSearch for pattern in messages from date from to date to (unixtime) in messages with peer (if peer not present, in all messages)", NULL},
@@ -1354,6 +1461,7 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"set_ttl", {ca_secret_chat, ca_number,  ca_none}, do_set_ttl, "set_ttl <secret chat>\tSets secret chat ttl. Client itself ignores ttl", NULL},
   {"set_username", {ca_string, ca_none}, do_set_username, "set_username <name>\tSets username.", NULL},
   {"show_license", {ca_none}, do_show_license, "show_license\tPrints contents of GPL license", NULL},
+  {"start_bot", {ca_user, ca_chat, ca_string, ca_none}, do_start_bot, "start_bot <bot> <chat> <data>\tAdds bot to chat", NULL},
   {"stats", {ca_none}, do_stats, "stats\tFor debug purpose", NULL},
   {"status_online", {ca_none}, do_status_online, "status_online\tSets status as online", NULL},
   {"status_offline", {ca_none}, do_status_offline, "status_offline\tSets status as offline", NULL},
@@ -1382,9 +1490,14 @@ void register_new_command (struct command *cmd) {
   commands[i] = *cmd;
 }
 
+tgl_peer_t *autocomplete_peer;
+int autocomplete_id;
+
 enum command_argument get_complete_mode (void) {
   force_end_mode = 0;
   line_ptr = rl_line_buffer;
+  autocomplete_peer = NULL;
+  autocomplete_id = 0;
 
   while (1) {
     next_token ();
@@ -1392,7 +1505,7 @@ enum command_argument get_complete_mode (void) {
     if (cur_token_len <= 0) { return ca_command; }
     if (*cur_token == '[') {
       if (cur_token_end_str) {
-        return ca_modifier;
+        return ca_modifier; 
       }
       if (cur_token[cur_token_len - 1] != ']') {
         return ca_none;
@@ -1404,7 +1517,7 @@ enum command_argument get_complete_mode (void) {
   if (cur_token_quoted) { return ca_none; }
   if (cur_token_end_str) { return ca_command; }
   if (*cur_token == '(') { return ca_extf; }
-
+  
   struct command *command = commands;
   int n = 0;
   struct tgl_command;
@@ -1415,7 +1528,7 @@ enum command_argument get_complete_mode (void) {
     n ++;
     command ++;
   }
-
+  
   if (!command->name) {
     return ca_none;
   }
@@ -1431,15 +1544,16 @@ enum command_argument get_complete_mode (void) {
     int opt = (*flags) & ca_optional;
 
     if (op == ca_none) { return ca_none; }
-    if (op == ca_string_end || op == ca_file_name_end) {
-      next_token_end ();
-      if (cur_token_len < 0 || !cur_token_end_str) {
+    if (op == ca_string_end || op == ca_file_name_end || op == ca_msg_string_end) {
+      next_token_end_ac ();
+
+      if (cur_token_len < 0 || !cur_token_end_str) { 
         return ca_none;
       } else {
         return op;
       }
     }
-
+    
     char *save = line_ptr;
     next_token ();
     if (op == ca_user || op == ca_chat || op == ca_secret_chat || op == ca_peer || op == ca_number || op == ca_double) {
@@ -1457,7 +1571,7 @@ enum command_argument get_complete_mode (void) {
         }
       } else {
         if (cur_token_end_str) { return op; }
-
+        
         int ok = 1;
         switch (op) {
         case ca_user:
@@ -1470,10 +1584,18 @@ enum command_argument get_complete_mode (void) {
           ok = (tgl_get_peer_type (cur_token_encr_chat ()) != NOT_FOUND);
           break;
         case ca_peer:
-          ok = (tgl_get_peer_type (cur_token_user ()) != NOT_FOUND);
+          ok = (tgl_get_peer_type (cur_token_peer ()) != NOT_FOUND);
+          if (ok) {
+            autocomplete_peer = tgl_peer_get (TLS, cur_token_peer ());
+            autocomplete_id = 0;
+          }
           break;
         case ca_number:
           ok = (cur_token_int () != NOT_FOUND);
+          if (ok) {
+            autocomplete_peer = NULL;
+            autocomplete_id = cur_token_int ();
+          }
           break;
         case ca_double:
           ok = (cur_token_double () != NOT_FOUND);
@@ -1545,7 +1667,111 @@ int complete_command_list (int index, const char *text, int len, char **R) {
   }
 }
 
-char *command_generator (const char *text, int state) {
+
+int complete_spec_message_answer (struct tgl_message *M, int index, const char *text, int len, char **R) {
+  if (!M || !M->reply_markup || !M->reply_markup->rows) {
+    *R = NULL;
+    return -1;
+  }
+  index ++;
+
+  int total = M->reply_markup->row_start[M->reply_markup->rows];
+  while (index < total && strncmp (M->reply_markup->buttons[index], text, len)) {
+    index ++;
+  }
+  
+  if (index < total) {
+    *R = strdup (M->reply_markup->buttons[index]);
+    assert (*R);
+    return index;
+  } else {
+    *R = NULL;
+    return -1;
+  }
+}
+
+int complete_message_answer (tgl_peer_t *P, int index, const char *text, int len, char **R) {
+  struct tgl_message *M = P->last;
+  while (M && (M->flags & TGLMF_OUT)) {
+    M = M->next;
+  }
+
+
+  return complete_spec_message_answer (M, index, text, len, R);
+}
+
+int complete_user_command (tgl_peer_t *P, int index, const char *text, int len, char **R) {
+  if (len <= 0 || *text != '/') {
+    return complete_message_answer (P, index, text, len, R);
+  }
+  text ++;
+  len --;
+  struct tgl_user *U = (void *)P;
+  if (!U->bot_info) {
+    *R = NULL;
+    return -1;
+  }
+  if (index >= U->bot_info->commands_num) {
+    return U->bot_info->commands_num + complete_message_answer (P, index - U->bot_info->commands_num, text - 1, len + 1, R);
+  }
+  
+  index ++;
+  while (index < U->bot_info->commands_num && strncmp (U->bot_info->commands[index].command, text, len)) {
+    index ++;
+  }
+  if (index < U->bot_info->commands_num) {
+    *R = NULL;
+    assert (asprintf (R, "/%s", U->bot_info->commands[index].command) >= 0);
+    assert (*R);
+    return index;
+  } else {
+    return U->bot_info->commands_num + complete_message_answer (P, index - U->bot_info->commands_num, text - 1, len + 1, R);
+  }
+}
+
+int complete_chat_command (tgl_peer_t *P, int index, const char *text, int len, char **R) {
+  if (len <= 0 || *text != '/') {
+    return complete_message_answer (P, index, text, len, R);
+  }
+  text ++;
+  len --;
+
+  index ++;
+
+  int tot = 0;
+  int i;
+  for (i = 0; i < P->chat.user_list_size; i++) { 
+    struct tgl_user *U = (void *)tgl_peer_get (TLS, TGL_MK_USER (P->chat.user_list[i].user_id));
+    if (!U) { continue; }
+    if (!U->bot_info) { continue; }
+    int p = len - 1;
+    while (p >= 0 && text[p] != '@') { p --; }
+    if (p < 0) { p = len; }
+    while (index - tot < U->bot_info->commands_num && strncmp (U->bot_info->commands[index - tot].command, text, p)) {
+      index ++;
+    }
+    if (index - tot < U->bot_info->commands_num) {
+      *R = NULL;
+      if (U->username) {
+        assert (asprintf (R, "/%s@%s", U->bot_info->commands[index].command, U->username) >= 0);
+      } else {
+        assert (asprintf (R, "/%s", U->bot_info->commands[index].command) >= 0);
+      }
+
+      assert (*R);
+      return index;
+    }
+    tot += U->bot_info->commands_num;
+  }
+
+  if (index == tot) {
+    return tot + complete_message_answer (P, index - tot, text - 1, len + 1, R);
+  } else {
+    return tot + complete_message_answer (P, index - tot - 1, text - 1, len + 1, R);
+  }
+}
+
+char *command_generator (const char *text, int state) {  
 #ifndef DISABLE_EXTF
   static int len;
 #endif
@@ -1559,7 +1785,7 @@ char *command_generator (const char *text, int state) {
     index = complete_string_list (in_chat_commands, index, text, rl_point, &R);
     return R;
   }
-
+ 
   char c = 0;
   c = rl_line_buffer[rl_point];
   rl_line_buffer[rl_point] = 0;
@@ -1568,17 +1794,17 @@ char *command_generator (const char *text, int state) {
     len = strlen (text);
 #endif
     index = -1;
-
+    
     mode = get_complete_mode ();
     command_pos = cur_token;
     command_len = cur_token_len;
   } else {
     if (mode != ca_file_name && mode != ca_file_name_end && index == -1) { return 0; }
   }
-
-  if (mode == ca_none || mode == ca_string || mode == ca_string_end || mode == ca_number || mode == ca_double) {
+  
+  if (mode == ca_none || mode == ca_string || mode == ca_string_end || mode == ca_number || mode == ca_double) {   
     if (c) { rl_line_buffer[rl_point] = c; }
-    return 0;
+    return 0; 
   }
   assert (command_len >= 0);
 
@@ -1589,7 +1815,7 @@ char *command_generator (const char *text, int state) {
     if (c) { rl_line_buffer[rl_point] = c; }
     return R;
   case ca_user:
-    index = tgl_complete_user_list (TLS, index, command_pos, command_len, &R);
+    index = tgl_complete_user_list (TLS, index, command_pos, command_len, &R);    
     if (c) { rl_line_buffer[rl_point] = c; }
     return R;
   case ca_peer:
@@ -1613,6 +1839,30 @@ char *command_generator (const char *text, int state) {
     index = complete_string_list (modifiers, index, command_pos, command_len, &R);
     if (c) { rl_line_buffer[rl_point] = c; }
     return R;
+  case ca_msg_string_end:
+    if (autocomplete_peer) {
+      if (tgl_get_peer_type (autocomplete_peer->id) == TGL_PEER_USER) {
+        index = complete_user_command (autocomplete_peer, index, command_pos, command_len, &R);
+      }
+      if (tgl_get_peer_type (autocomplete_peer->id) == TGL_PEER_CHAT) {
+        index = complete_chat_command (autocomplete_peer, index, command_pos, command_len, &R);
+      }
+    }
+    if (autocomplete_id) {
+      struct tgl_message *M = tgl_message_get (TLS, autocomplete_id);
+      if (M) {
+        if (command_len > 0 && *command_pos == '/') {
+          tgl_peer_t *P = tgl_peer_get (TLS, M->from_id);
+          if (P) {
+            index = complete_user_command (autocomplete_peer, index, command_pos, command_len, &R);
+          }
+        } else {
+          index = complete_spec_message_answer (M, index, command_pos, command_len, &R);
+        }
+      }
+    }
+    if (c) { rl_line_buffer[rl_point] = c; }
+    return R;
 #ifndef DISABLE_EXTF
   case ca_extf:
     index = tglf_extf_autocomplete (TLS, text, len, index, &R, rl_line_buffer, rl_point);
@@ -1632,7 +1882,7 @@ void work_modifier (const char *s, int l) {
   }
   if (sscanf (s, "[reply=%d]", &reply_id) >= 1) {
   }
-
+  
   if (is_same_word (s, l, "[disable_preview]")) {
     disable_msg_preview = TGL_SEND_MSG_FLAG_DISABLE_PREVIEW;
   }
@@ -1664,7 +1914,6 @@ void print_fail (struct in_ev *ev) {
   mprint_end (ev);
 }
 
-void fail_interface (struct tgl_state *TLS, struct in_ev *ev, int error_code, const char *format, ...) __attribute__ (( format (printf, 4, 5)));
 void fail_interface (struct tgl_state *TLS, struct in_ev *ev, int error_code, const char *format, ...) {
   static char error[1001];
 
@@ -1759,7 +2008,7 @@ void print_msg_list_gw (struct tgl_state *TLSR, void *extra, int success, int nu
       int i;
       for (i = num - 1; i >= 0; i--) {
         json_t *a = json_pack_message (ML[i]);
-        assert (json_array_append (res, a) >= 0);
+        assert (json_array_append (res, a) >= 0);        
       }
       char *s = json_dumps (res, 0);
       mprintf (ev, "%s\n", s);
@@ -1813,7 +2062,7 @@ void print_user_list_gw (struct tgl_state *TLSR, void *extra, int success, int n
       json_t *res = json_array ();
       int i;
       for (i = num - 1; i >= 0; i--) {
-        json_t *a = json_pack_peer (UL[i]->id, (void *)UL[i]);
+        json_t *a = json_pack_peer (UL[i]->id);
         assert (json_array_append (res, a) >= 0);
       }
       char *s = json_dumps (res, 0);
@@ -1839,7 +2088,7 @@ void print_user_gw (struct tgl_state *TLSR, void *extra, int success, struct tgl
     mprintf (ev, "\n");
   } else {
     #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id, (void *)U);
+      json_t *res = json_pack_peer (U->id);
       char *s = json_dumps (res, 0);
       mprintf (ev, "%s\n", s);
       json_decref (res);
@@ -1929,7 +2178,7 @@ void print_chat_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-
+  
   if (!enable_json) {
     tgl_peer_t *U = (void *)C;
     mpush_color (ev, COLOR_YELLOW);
@@ -1952,7 +2201,7 @@ void print_chat_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
     mpop_color (ev);
   } else {
     #ifdef USE_JSON
-      json_t *res = json_pack_peer (C->id, (void *)C);
+      json_t *res = json_pack_peer (C->id);
       char *s = json_dumps (res, 0);
       mprintf (ev, "%s\n", s);
       json_decref (res);
@@ -2004,15 +2253,25 @@ void print_user_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
       mprintf (ev, " @%s", U->username);
     }
     mprintf (ev, " (#%d):\n", tgl_get_peer_id (U->id));
-    mprintf (ev, "\treal name: %s %s\n", U->real_first_name, U->real_last_name);
     mprintf (ev, "\tphone: %s\n", U->phone);
     mprintf (ev, "\t");
     print_user_status (&U->status, ev);
     mprintf (ev, "\n");
+
+    if (U->bot_info) {
+      mprintf (ev, "\tshare_text:  %s\n", U->bot_info->share_text);
+      mprintf (ev, "\tdescription: %s\n", U->bot_info->description);
+      mprintf (ev, "\tcommands:\n");
+
+      int i;
+      for (i = 0; i < U->bot_info->commands_num; i++) {
+        mprintf (ev, "\t\t/%s: %s\n", U->bot_info->commands[i].command, U->bot_info->commands[i].description);
+      }
+    }
     mpop_color (ev);
   } else {
     #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id, (void *)U);
+      json_t *res = json_pack_peer (U->id);
       char *s = json_dumps (res, 0);
       mprintf (ev, "%s\n", s);
       json_decref (res);
@@ -2039,7 +2298,7 @@ void print_secret_chat_gw (struct tgl_state *TLSR, void *extra, int success, str
     mpop_color (ev);
   } else {
     #ifdef USE_JSON
-      json_t *res = json_pack_peer (E->id, (void *)E);
+      json_t *res = json_pack_peer (E->id);
       char *s = json_dumps (res, 0);
       mprintf (ev, "%s\n", s);
       json_decref (res);
@@ -2084,7 +2343,7 @@ void print_dialog_list_gw (struct tgl_state *TLSR, void *extra, int success, int
       json_t *res = json_array ();
       int i;
       for (i = size - 1; i >= 0; i--) {
-        json_t *a = json_pack_peer (peers[i], tgl_peer_get (TLS, peers[i]));
+        json_t *a = json_pack_peer (peers[i]);
         assert (json_array_append (res, a) >= 0);
       }
       char *s = json_dumps (res, 0);
@@ -2115,7 +2374,7 @@ void interpreter_chat_mode (char *line) {
     return;
   }
   if (strlen (line) > 0) {
-    tgl_do_send_message (TLS, chat_mode_id, line, strlen (line), 0, 0, 0);
+    tgl_do_send_message (TLS, chat_mode_id, line, strlen (line), 0, NULL, 0, 0);
   }
 }
 
@@ -2305,7 +2564,7 @@ void print_message_gw (struct tgl_state *TLSR, struct tgl_message *M) {
     py_new_msg (M);
   #endif
   if (!binlog_read) { return; }
-  if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
+  if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) { 
     write_secret_chat_file ();
   }
   if (alert_sound) {
@@ -2387,7 +2646,7 @@ void json_peer_update (struct in_ev *ev, tgl_peer_t *P, unsigned flags) {
   #ifdef USE_JSON
     json_t *res = json_object ();
     assert (json_object_set (res, "event", json_string ("updates")) >= 0);
-    assert (json_object_set (res, "peer", json_pack_peer (P->id, P)) >= 0);
+    assert (json_object_set (res, "peer", json_pack_peer (P->id)) >= 0);
     assert (json_object_set (res, "updates", json_pack_updates (flags)) >= 0);
     char *s = json_dumps (res, 0);
     mprintf (ev, "%s\n", s);
@@ -2404,7 +2663,7 @@ void user_update_gw (struct tgl_state *TLSR, struct tgl_user *U, unsigned flags)
   #ifdef USE_PYTHON
     py_user_update (U, flags);
   #endif
-
+ 
   if (disable_output && !notify_ev) { return; }
   if (!binlog_read) { return; }
   struct in_ev *ev = notify_ev;
@@ -2438,7 +2697,7 @@ void chat_update_gw (struct tgl_state *TLSR, struct tgl_chat *U, unsigned flags)
   #ifdef USE_PYTHON
     py_chat_update (U, flags);
   #endif
-
+ 
   if (disable_output && !notify_ev) { return; }
   if (!binlog_read) { return; }
   struct in_ev *ev = notify_ev;
@@ -2472,20 +2731,20 @@ void secret_chat_update_gw (struct tgl_state *TLSR, struct tgl_secret_chat *U, u
   #ifdef USE_PYTHON
     py_secret_chat_update (U, flags);
   #endif
-
+  
 
 
   if ((flags & TGL_UPDATE_WORKING) || (flags & TGL_UPDATE_DELETED)) {
     write_secret_chat_file ();
   }
-
+  
   if (!binlog_read) { return; }
 
   if ((flags & TGL_UPDATE_REQUESTED) && !disable_auto_accept)  {
     //tgl_do_accept_encr_chat_request (TLS, U, 0, 0);
     tgl_do_accept_encr_chat_request (TLS, U, print_encr_chat_success_gw, 0);
   }
-
+  
   if (disable_output && !notify_ev) { return; }
   struct in_ev *ev = notify_ev;
 
@@ -2637,10 +2896,10 @@ void interpreter_ex (char *line, void *ex) {
   reply_id = 0;
   disable_msg_preview = 0;
   count = 1;
-  if (!line) {
+  if (!line) { 
     do_safe_quit (NULL, 0, NULL, NULL);
     in_readline = 0;
-    return;
+    return; 
   }
   if (!*line) {
     in_readline = 0;
@@ -2650,53 +2909,53 @@ void interpreter_ex (char *line, void *ex) {
   if (line && *line) {
     add_history (line);
   }
-
-  if (*line == '(') {
+  
+  if (*line == '(') { 
     struct in_ev *ev = ex;
     if (ev) { ev->refcnt ++; }
     tgl_do_send_extf (TLS, line, strlen (line), callback_extf, ev);
     in_readline = 0;
-    return;
+    return; 
   }
 
   while (1) {
     next_token ();
-    if (cur_token_quoted) {
+    if (cur_token_quoted) { 
       in_readline = 0;
       fail_interface (TLS, ex, ENOSYS, "can not parse modifier");
-      return;
+      return; 
     }
 
-    if (cur_token_len <= 0) {
+    if (cur_token_len <= 0) { 
       in_readline = 0;
       fail_interface (TLS, ex, ENOSYS, "can not parse modifier");
-      return;
+      return; 
     }
-
+    
     if (*cur_token == '[') {
       if (cur_token_end_str) {
         in_readline = 0;
         fail_interface (TLS, ex, ENOSYS, "can not parse modifier");
-        return;
+        return; 
       }
       if (cur_token[cur_token_len - 1] != ']') {
         in_readline = 0;
         fail_interface (TLS, ex, ENOSYS, "can not parse modifier");
-        return;
+        return; 
       }
       work_modifier (cur_token, cur_token_len);
       continue;
     }
     break;
   }
-  if (cur_token_quoted || cur_token_end_str) {
+  if (cur_token_quoted || cur_token_end_str) { 
     fail_interface (TLS, ex, ENOSYS, "can not parse command name");
     in_readline = 0;
-    return;
+    return; 
   }
-
-
-
+    
+    
+  
   struct command *command = commands;
   int n = 0;
   struct tgl_command;
@@ -2707,11 +2966,11 @@ void interpreter_ex (char *line, void *ex) {
     n ++;
     command ++;
   }
-
+  
   if (!command->name) {
     fail_interface (TLS, ex, ENOSYS, "can not find command '%.*s'", cur_token_len, cur_token);
     in_readline = 0;
-    return;
+    return; 
   }
 
   enum command_argument *flags = command->args;
@@ -2729,7 +2988,7 @@ void interpreter_ex (char *line, void *ex) {
     enum command_argument op = (*flags) & 255;
     int opt = (*flags) & ca_optional;
 
-    if (op == ca_none) {
+    if (op == ca_none) { 
       next_token ();
       if (cur_token_end_str) {
         int z;
@@ -2741,10 +3000,10 @@ void interpreter_ex (char *line, void *ex) {
       }
       break;
     }
-
-    if (op == ca_string_end || op == ca_file_name_end) {
+      
+    if (op == ca_string_end || op == ca_file_name_end || op == ca_msg_string_end) {
       next_token_end ();
-      if (cur_token_len < 0) {
+      if (cur_token_len < 0) { 
         fail_interface (TLS, ex, ENOSYS, "can not parse string_end arg #%d", args_num);
         break;
       } else {
@@ -2792,7 +3051,7 @@ void interpreter_ex (char *line, void *ex) {
           break;
         }
       } else {
-        if (cur_token_end_str) {
+        if (cur_token_end_str) { 
           if (opt) {
             if (op != ca_number && op != ca_double) {
               args[args_num ++].P = 0;
@@ -2817,19 +3076,19 @@ void interpreter_ex (char *line, void *ex) {
         int ok = 1;
         switch (op) {
         case ca_user:
-          args[args_num ++].P = mk_peer (cur_token_user ());
+          args[args_num ++].P = mk_peer (cur_token_user ()); 
           ok = args[args_num - 1].P != NULL;
           break;
         case ca_chat:
-          args[args_num ++].P = mk_peer (cur_token_chat ());
+          args[args_num ++].P = mk_peer (cur_token_chat ()); 
           ok = args[args_num - 1].P != NULL;
           break;
         case ca_secret_chat:
-          args[args_num ++].P = mk_peer (cur_token_encr_chat ());
+          args[args_num ++].P = mk_peer (cur_token_encr_chat ()); 
           ok = args[args_num - 1].P != NULL;
           break;
         case ca_peer:
-          args[args_num ++].P = mk_peer (cur_token_peer ());
+          args[args_num ++].P = mk_peer (cur_token_peer ()); 
           ok = args[args_num - 1].P != NULL;
           break;
         case ca_number:
@@ -2875,7 +3134,7 @@ void interpreter_ex (char *line, void *ex) {
         continue;
       }
     }
-    assert (0);
+    //assert (0);
   }
   int i;
   for (i = 0; i < args_num; i++) {
@@ -2883,7 +3142,7 @@ void interpreter_ex (char *line, void *ex) {
       free (args[i].str);
     }
   }
-
+  
   update_prompt ();
   in_readline = 0;
 }
@@ -2953,9 +3212,9 @@ void print_start (void) {
 
 void print_end (void) {
   if (in_readline) { return; }
-  if (readline_disabled) {
+  if (readline_disabled) { 
     fflush (stdout);
-    return;
+    return; 
   }
   assert (prompt_was);
   if (readline_active) {
@@ -2969,7 +3228,7 @@ void print_end (void) {
   int *ptr = in_ptr;
   while (ptr < in_end) { mprintf (ev, " %08x", *(ptr ++)); }
   mprintf (ev, "\n");
-  mprint_end (ev);
+  mprint_end (ev); 
 }*/
 
 void logprintf (const char *format, ...) {
@@ -3052,7 +3311,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       } else {
         mprintf (ev, ":");
       }
-
+      
       if (M->document->mime_type) {
         mprintf (ev, " type=%s", M->document->mime_type);
       }
@@ -3064,7 +3323,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       if (M->document->duration) {
         mprintf (ev, " duration=%d", M->document->duration);
       }
-
+      
       mprintf (ev, " size=");
       if (M->document->size < (1 << 10)) {
         mprintf (ev, "%dB", M->document->size);
@@ -3075,9 +3334,9 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       } else {
         mprintf (ev, "%dGiB", M->document->size >> 30);
       }
-
+      
       mprintf (ev, "]");
-
+      
       if (M->caption) {
         mprintf (ev, " %s", M->caption);
       }
@@ -3102,7 +3361,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       } else {
         mprintf (ev, ":");
       }
-
+      
       if (M->encr_document->mime_type) {
         mprintf (ev, " type=%s", M->encr_document->mime_type);
       }
@@ -3114,7 +3373,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       if (M->encr_document->duration) {
         mprintf (ev, " duration=%d", M->encr_document->duration);
       }
-
+      
       mprintf (ev, " size=");
       if (M->encr_document->size < (1 << 10)) {
         mprintf (ev, "%dB", M->encr_document->size);
@@ -3125,7 +3384,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       } else {
         mprintf (ev, "%dGiB", M->encr_document->size >> 30);
       }
-
+      
       mprintf (ev, "]");
 
       return;
@@ -3161,11 +3420,11 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
       break;
     case tgl_message_media_venue:
       mprintf (ev, "[geo https://maps.google.com/?q=%.6lf,%.6lf", M->venue.geo.latitude, M->venue.geo.longitude);
-
+      
       if (M->venue.title) {
         mprintf (ev, " title:'%s'", M->venue.title);
       }
-
+      
       if (M->venue.address) {
         mprintf (ev, " address:'%s'", M->venue.address);
       }
@@ -3178,7 +3437,7 @@ void print_media (struct in_ev *ev, struct tgl_message_media *M) {
 
       mprintf (ev, "]");
       return;
-
+      
     default:
       mprintf (ev, "x = %d\n", M->type);
       assert (0);
@@ -3220,7 +3479,7 @@ void print_user_name (struct in_ev *ev, tgl_peer_id_t id, tgl_peer_t *U) {
     } else if (!U->user.last_name || !strlen (U->user.last_name)) {
       mprintf (ev, "%s", U->user.first_name);
     } else {
-      mprintf (ev, "%s %s", U->user.first_name, U->user.last_name);
+      mprintf (ev, "%s %s", U->user.first_name, U->user.last_name); 
     }
     if (U->flags & (TGLUF_SELF | TGLUF_CONTACT)) {
       mpop_color (ev);
@@ -3283,7 +3542,7 @@ void print_service_message (struct in_ev *ev, struct tgl_message *M) {
   assert (M);
   //print_start ();
   mpush_color (ev, COLOR_GREY);
-
+  
   mpush_color (ev, COLOR_MAGENTA);
   if (msg_num_mode) {
     mprintf (ev, "%lld ", M->id);
@@ -3299,7 +3558,7 @@ void print_service_message (struct in_ev *ev, struct tgl_message *M) {
   }
   mprintf (ev, " ");
   print_user_name (ev, M->from_id, tgl_peer_get (TLS, M->from_id));
-
+ 
   switch (M->action.type) {
   case tgl_message_action_none:
     mprintf (ev, "\n");
@@ -3314,7 +3573,7 @@ void print_service_message (struct in_ev *ev, struct tgl_message *M) {
     mprintf (ev, " created chat %s. %d users\n", M->action.title, M->action.user_num);
     break;
   case tgl_message_action_chat_edit_title:
-    mprintf (ev, " changed title to %s\n",
+    mprintf (ev, " changed title to %s\n", 
       M->action.new_title);
     break;
   case tgl_message_action_chat_edit_photo:
@@ -3528,8 +3787,8 @@ void set_interface_callbacks (void) {
   readline_active = 1;
   rl_filename_quote_characters = strdup (" ");
   rl_basic_word_break_characters = strdup (" ");
-
-
+  
+  
   rl_callback_handler_install (get_default_prompt (), interpreter);
   rl_completion_entry_function = command_generator;
 }
