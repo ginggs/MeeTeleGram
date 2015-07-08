@@ -798,9 +798,11 @@ tgl_timer_methods my_timers = {
   my_timer_free
 };
 ///////////////////////////////////////////////////////////////////////////////
-#define TELEGRAM_CLI_APP_HASH "36722c72256a24c1225de00eb6a1ca74"
-#define TELEGRAM_CLI_APP_ID 2899
+#define TELEGRAM_CLI_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
+#define TELEGRAM_CLI_APP_ID 44097
 #define TELEGRAM_CLI_VERSION "1.3.1"
+// TEST: 149.154.167.40:443
+// Product: 149.154.167.50:443
 ///////////////////////////////////////////////////////////////////////////////
 void empty_auth_file (void) {
     qDebug(__PRETTY_FUNCTION__);
