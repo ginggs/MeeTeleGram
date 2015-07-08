@@ -772,6 +772,7 @@ struct tgl_timer *my_timer_alloc (struct tgl_state *TLS, void (*cb)(struct tgl_s
 
 void my_timer_insert (struct tgl_timer *t, double p) {
     qDebug(__PRETTY_FUNCTION__);
+    // if a timeout is schedeled before, it is replaced
 //  if (p < 0) { p = 0; }
 //  double e = p - (int)p;
 //  if (e < 0) { e = 0; }
@@ -1045,6 +1046,39 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
     read_secret_chat_file();
 
     binlog_read = true;
+
+//    if (reset_authorization) {
+//      tgl_peer_t *P = tgl_peer_get (TLS, TGL_MK_USER (TLS->our_id));
+//      if (P && P->user.phone && reset_authorization == 1) {
+//        set_default_username (P->user.phone);
+//      }
+//      bl_do_reset_authorization (TLS);
+//    }
+
+    tgl_login (TLS);
+
+    // net loop!
+    while (true)
+    {
+//        if (safe_quit && !TLS->active_queries) {
+//          printf ("All done. Exit\n");
+//          do_halt (0);
+//          safe_quit = 0;
+//        }
+//        if (time (0) - last_get_state > 3600) {
+//          tgl_do_lookup_state (TLS);
+//          last_get_state = time (0);
+//        }
+
+        write_state_file ();
+//        if (unknown_user_list_pos) {
+//          int i;
+//          for (i = 0; i < unknown_user_list_pos; i++) {
+//            tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
+//          }
+//          unknown_user_list_pos = 0;
+//        }
+    }
 }
 
 TelegramWindow::~TelegramWindow()
