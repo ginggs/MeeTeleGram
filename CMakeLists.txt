@@ -23,6 +23,7 @@ set(telegram_n9_SOURCES ${telegram_n9_HEADERS} ${telegram_n9_UIS}
     $<JOIN:${src_pairs},.cpp >
     main.cpp
     qttimer.cpp
+    qtconnection.cpp
 )
 
 # Create output ==============================================================
