@@ -57,6 +57,7 @@ struct connection: public QObject
     private:
         QTcpSocket socket;
         mtproto_methods *methods;
+        QByteArray read_buffer;
 
     private slots:
         void connected();
@@ -92,7 +93,9 @@ struct connection: public QObject
             }
         }
 
+        qint64 available_bytes();
         void try_rpc_read();
+        int read_lookup(void *data, int len);
 };
 
 connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
@@ -143,9 +146,25 @@ int connection::read(void *data, int len)
 {
     qDebug(__PRETTY_FUNCTION__);
     // read data from buffer to _data
-    qint64 n = socket.read(reinterpret_cast<char *>(data), len);
-    assert(n==len);
-    return n;
+    if (len < read_buffer.size())
+    {
+        memcpy(data, read_buffer.data(), len);
+        read_buffer.remove(0, len);
+        return len;
+    }
+    else
+    {
+        memcpy(data, read_buffer.data(), read_buffer.size());
+        int read = read_buffer.size();
+        read_buffer.clear();
+
+        if (len > read)
+        {
+            char *rem_data = reinterpret_cast<char *>(data) + read;
+            read += socket.read(rem_data, len - read);
+        }
+        return read;
+    }
 }
 
 void connection::connected()
@@ -202,50 +221,83 @@ void connection::ready_read()
 {
     qDebug(__PRETTY_FUNCTION__);
     // restart ping timer
-    // read into buffer
+    int newbytes = socket.bytesAvailable();
+    if (newbytes > 1024 * 1024)
+        newbytes = 1024 * 1024;
+
+    int cur_size = read_buffer.size();
+    read_buffer.resize(cur_size + newbytes);
+    char *buf = read_buffer.data() + cur_size;
+    qint64 r = socket.read(buf, newbytes);
+    assert(r == newbytes);
     // if error, fail_connection()
-    // x = readnum
-    if (socket.bytesAvailable())
+    if (r)
         try_rpc_read();
+}
+
+qint64 connection::available_bytes()
+{
+    return read_buffer.size() + socket.bytesAvailable();
 }
 
 void connection::try_rpc_read()
 {
     qDebug(__PRETTY_FUNCTION__);
-//  while (1) {
-//    if (c->in_bytes < 1) { return; }
-//    unsigned len = 0;
-//    unsigned t = 0;
-//    assert (tgln_read_in_lookup (c, &len, 1) == 1);
-//    if (len >= 1 && len <= 0x7e) {
-//      if (c->in_bytes < (int)(1 + 4 * len)) { return; }
-//    } else {
-//      if (c->in_bytes < 4) { return; }
-//      assert (tgln_read_in_lookup (c, &len, 4) == 4);
-//      len = (len >> 8);
-//      if (c->in_bytes < (int)(4 + 4 * len)) { return; }
-//      len = 0x7f;
-//    }
-//
-//    if (len >= 1 && len <= 0x7e) {
-//      assert (tgln_read_in (c, &t, 1) == 1);
-//      assert (t == len);
-//      assert (len >= 1);
-//    } else {
-//      assert (len == 0x7f);
-//      assert (tgln_read_in (c, &len, 4) == 4);
-//      len = (len >> 8);
-//      assert (len >= 1);
-//    }
-//    len *= 4;
-//    int op;
-//    assert (tgln_read_in_lookup (c, &op, 4) == 4);
-//    if (c->methods->execute (TLS, c, op, len) < 0) {
-//      return;
-//    }
-//  }
+    while (true)
+    {
+        if (available_bytes() < 1) { return; }
+        unsigned len = 0;
+        unsigned t = 0;
+        assert(read_lookup(&len, 1) == 1);
+        if (len >= 1 && len <= 0x7e)
+        {
+            if (available_bytes() < (int) (1 + 4 * len)) return;
+        }
+        else
+        {
+            if (available_bytes() < 4) return;
+            assert(read_lookup(&len, 4) == 4);
+            len = (len >> 8);
+            if (available_bytes() < (int) (4 + 4 * len)) return;
+            len = 0x7f;
+        }
+
+        if (len >= 1 && len <= 0x7e)
+        {
+            assert(read(&t, 1) == 1);
+            assert(t == len);
+            assert(len >= 1);
+        }
+        else
+        {
+            assert(len == 0x7f);
+            assert(read(&len, 4) == 4);
+            len = (len >> 8);
+            assert(len >= 1);
+        }
+        len *= 4;
+        int op;
+        assert(read_lookup(&op, 4) == 4);
+        if (methods->execute(tl_state, this, op, len) < 0)
+            break;
+    }
 }
 
+int connection::read_lookup(void *data, int len)
+{
+    qDebug(__PRETTY_FUNCTION__);
+
+    if (len > read_buffer.size())
+    {
+        int append_len = qMin(static_cast<qint64>(len - read_buffer.size()),
+            socket.bytesAvailable());
+        len = read_buffer.size() + append_len;
+        read_buffer.resize(len);
+        read_buffer.append(socket.read(append_len));
+    }
+    memcpy(data, read_buffer.constData(), len);
+    return len;
+}
 
 static connection *create_connection(tgl_state *tls, const char *host, int port,
     tgl_session *session, tgl_dc *dc, mtproto_methods *methods)
