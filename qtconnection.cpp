@@ -135,7 +135,6 @@ void connection::connect_to_server(const char *host, int port)
 
 int connection::write(const void *data, int len)
 {
-    qDebug(__PRETTY_FUNCTION__);
     // buffer data & write
     qint64 n = socket.write(reinterpret_cast<const char *>(data), len);
     assert(n==len);
@@ -144,8 +143,6 @@ int connection::write(const void *data, int len)
 
 int connection::read(void *data, int len)
 {
-    qDebug(__PRETTY_FUNCTION__);
-    // read data from buffer to _data
     if (len < read_buffer.size())
     {
         memcpy(data, read_buffer.data(), len);
@@ -169,7 +166,6 @@ int connection::read(void *data, int len)
 
 void connection::connected()
 {
-    qDebug(__PRETTY_FUNCTION__);
     char byte = 0xef;
     assert(socket.write(&byte, 1) == 1);
     socket.flush();
@@ -208,7 +204,6 @@ void connection::about_to_close()
 
 void connection::bytes_written(qint64 bytes)
 {
-    qDebug(__PRETTY_FUNCTION__);
     // write remaining data?!
 }
 
@@ -219,7 +214,6 @@ void connection::read_channel_finished()
 
 void connection::ready_read()
 {
-    qDebug(__PRETTY_FUNCTION__);
     // restart ping timer
     int newbytes = socket.bytesAvailable();
     if (newbytes > 1024 * 1024)
@@ -242,7 +236,6 @@ qint64 connection::available_bytes()
 
 void connection::try_rpc_read()
 {
-    qDebug(__PRETTY_FUNCTION__);
     while (true)
     {
         if (available_bytes() < 1) { return; }
@@ -285,8 +278,6 @@ void connection::try_rpc_read()
 
 int connection::read_lookup(void *data, int len)
 {
-    qDebug(__PRETTY_FUNCTION__);
-
     if (len > read_buffer.size())
     {
         int append_len = qMin(static_cast<qint64>(len - read_buffer.size()),
@@ -327,7 +318,7 @@ static int read_in_lookup(connection *c, void *_data, int len)
 
 static void incr_out_packet_num(connection *c)
 {
-    qDebug(__PRETTY_FUNCTION__);
+//    qDebug(__PRETTY_FUNCTION__);
 }
 
 static tgl_dc *get_dc(connection *c)
@@ -342,7 +333,6 @@ static tgl_session *get_session(connection *c)
 
 static void flush_out(connection *c)
 {
-    qDebug(__PRETTY_FUNCTION__);
     c->flush();
 }
 
