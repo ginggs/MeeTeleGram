@@ -7,7 +7,7 @@ cmake_policy(SET CMP0003 NEW)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-find_package(Qt4 REQUIRED QtCore QtGui)
+find_package(Qt4 REQUIRED QtCore QtGui QtNetwork)
 find_package(OpenSSL REQUIRED)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -31,6 +31,6 @@ set(telegram_n9_SOURCES ${telegram_n9_HEADERS} ${telegram_n9_UIS}
 add_executable(${PROJECT_NAME} ${telegram_n9_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} tgl event 
-    ${OPENSSL_LIBRARIES} readline Qt4::QtCore Qt4::QtGui)
+    ${OPENSSL_LIBRARIES} readline Qt4::QtCore Qt4::QtGui Qt4::QtNetwork)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
