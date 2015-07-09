@@ -14,8 +14,12 @@
 #define TELEGRAM_N9_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
 #define TELEGRAM_N9_APP_ID 44097
 #define TELEGRAM_N9_VERSION "1.0.0"
-// TEST: 149.154.167.40:443
-// Product: 149.154.167.50:443
+// TEST: :443
+// Product: :443
+#define TELEGRAM_N9_TEST_SERVER "149.154.167.40"
+#define TELEGRAM_N9_PROD_SERVER "149.154.167.50"
+
+
 #define DC_SERIALIZED_MAGIC 0x868aa81d
 #define STATE_FILE_MAGIC 0x28949a93
 #define SECRET_CHAT_FILE_MAGIC 0x37a1988a
@@ -568,21 +572,31 @@ tgl_update_callback upd_cb =
 };
 
 /////////////////////////////////////////////////////////////////////////////
-void empty_auth_file (void) {
+void empty_auth_file(void)
+{
     qDebug(__PRETTY_FUNCTION__);
-  if (TLS->test_mode) {
-    bl_do_dc_option (TLS, 1, "", 0, TG_SERVER_TEST_1, strlen (TG_SERVER_TEST_1), 443);
-    bl_do_dc_option (TLS, 2, "", 0, TG_SERVER_TEST_2, strlen (TG_SERVER_TEST_2), 443);
-    bl_do_dc_option (TLS, 3, "", 0, TG_SERVER_TEST_3, strlen (TG_SERVER_TEST_3), 443);
-    bl_do_set_working_dc (TLS, TG_SERVER_TEST_DEFAULT);
-  } else {
-    bl_do_dc_option (TLS, 1, "", 0, TG_SERVER_1, strlen (TG_SERVER_1), 443);
-    bl_do_dc_option (TLS, 2, "", 0, TG_SERVER_2, strlen (TG_SERVER_2), 443);
-    bl_do_dc_option (TLS, 3, "", 0, TG_SERVER_3, strlen (TG_SERVER_3), 443);
-    bl_do_dc_option (TLS, 4, "", 0, TG_SERVER_4, strlen (TG_SERVER_4), 443);
-    bl_do_dc_option (TLS, 5, "", 0, TG_SERVER_5, strlen (TG_SERVER_5), 443);
-    bl_do_set_working_dc (TLS, TG_SERVER_DEFAULT);
-  }
+    if (TLS->test_mode)
+    {
+        bl_do_dc_option(TLS, 1, "", 0, TELEGRAM_N9_TEST_SERVER,
+            strlen(TELEGRAM_N9_TEST_SERVER), 443);
+        bl_do_set_working_dc(TLS, 1);
+//        bl_do_dc_option(TLS, 1, "", 0, TG_SERVER_TEST_1,
+//            strlen(TG_SERVER_TEST_1), 443);
+//        bl_do_dc_option(TLS, 2, "", 0, TG_SERVER_TEST_2,
+//            strlen(TG_SERVER_TEST_2), 443);
+//        bl_do_dc_option(TLS, 3, "", 0, TG_SERVER_TEST_3,
+//            strlen(TG_SERVER_TEST_3), 443);
+//        bl_do_set_working_dc(TLS, TG_SERVER_TEST_DEFAULT);
+    }
+    else
+    {
+        bl_do_dc_option(TLS, 1, "", 0, TG_SERVER_1, strlen(TG_SERVER_1), 443);
+        bl_do_dc_option(TLS, 2, "", 0, TG_SERVER_2, strlen(TG_SERVER_2), 443);
+        bl_do_dc_option(TLS, 3, "", 0, TG_SERVER_3, strlen(TG_SERVER_3), 443);
+        bl_do_dc_option(TLS, 4, "", 0, TG_SERVER_4, strlen(TG_SERVER_4), 443);
+        bl_do_dc_option(TLS, 5, "", 0, TG_SERVER_5, strlen(TG_SERVER_5), 443);
+        bl_do_set_working_dc(TLS, TG_SERVER_DEFAULT);
+    }
 }
 
 void read_dc (int auth_file_fd, int id, unsigned ver) {
@@ -780,8 +794,9 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    tgl_allocator = &tgl_allocator_release;
+    tgl_allocator = &tgl_allocator_debug; // todo(test_code) change to release
     TLS = tgl_state_alloc();
+    tgl_set_test_mode(TLS); // todo(test_code) remove for production
     tgl_set_binlog_mode (TLS, 0);
     tgl_incr_verbosity (TLS);
     tgl_incr_verbosity (TLS);
