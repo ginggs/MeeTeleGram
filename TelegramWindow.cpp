@@ -13,16 +13,24 @@ extern "C" {
 #include <tgl-binlog.h>
 }
 
+#define TELEGRAM_N9_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
+#define TELEGRAM_N9_APP_ID 44097
+#define TELEGRAM_N9_VERSION "1.0.0"
+// TEST: 149.154.167.40:443
+// Product: 149.154.167.50:443
+#define DC_SERIALIZED_MAGIC 0x868aa81d
+#define STATE_FILE_MAGIC 0x28949a93
+#define SECRET_CHAT_FILE_MAGIC 0x37a1988a
+
 struct connection {
         tgl_dc *dc;
         tgl_session *session;
 };
 
+extern tgl_timer_methods my_timers;
+
 struct tgl_state *TLS;
 bool binlog_read = false;
-#define DC_SERIALIZED_MAGIC 0x868aa81d
-#define STATE_FILE_MAGIC 0x28949a93
-#define SECRET_CHAT_FILE_MAGIC 0x37a1988a
 
 /////////////////////////////////////////////////////////////////////////////
 const char *get_auth_key_filename()
@@ -754,57 +762,6 @@ tgl_net_methods conn_methods = {
   create_connection
 };
 /////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-//static void my_timer_alarm (evutil_socket_t fd, short what, void *arg) {
-//  void **p = arg;
-//  ((void (*)(struct tgl_state *, void *))p[1]) (p[0], p[2]);
-//}
-
-struct tgl_timer *my_timer_alloc (struct tgl_state *TLS, void (*cb)(struct tgl_state *TLS, void *arg), void *arg) {
-        qDebug(__PRETTY_FUNCTION__);
-//  void **p = malloc (sizeof (void *) * 3);
-//  p[0] = TLS;
-//  p[1] = cb;
-//  p[2] = arg;
-//  return (void *)evtimer_new (TLS->ev_base, timer_alarm, p);
-        return NULL;
-}
-
-void my_timer_insert (struct tgl_timer *t, double p) {
-    qDebug(__PRETTY_FUNCTION__);
-    // if a timeout is schedeled before, it is replaced
-//  if (p < 0) { p = 0; }
-//  double e = p - (int)p;
-//  if (e < 0) { e = 0; }
-//  struct timeval pv = { (int)p, (int)(e * 1e6)};
-//  event_add ((void *)t, &pv);
-}
-
-void my_timer_delete (struct tgl_timer *t) {
-    qDebug(__PRETTY_FUNCTION__);
-//  event_del ((void *)t);
-}
-
-void my_timer_free (struct tgl_timer *t) {
-    qDebug(__PRETTY_FUNCTION__);
-//  void *arg = event_get_callback_arg ((void *)t);
-//  free (arg);
-//  event_free ((void *)t);
-}
-
-tgl_timer_methods my_timers = {
-  my_timer_alloc,
-  my_timer_insert,
-  my_timer_delete,
-  my_timer_free
-};
-///////////////////////////////////////////////////////////////////////////////
-#define TELEGRAM_CLI_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
-#define TELEGRAM_CLI_APP_ID 44097
-#define TELEGRAM_CLI_VERSION "1.3.1"
-// TEST: 149.154.167.40:443
-// Product: 149.154.167.50:443
-///////////////////////////////////////////////////////////////////////////////
 void empty_auth_file (void) {
     qDebug(__PRETTY_FUNCTION__);
   if (TLS->test_mode) {
@@ -1017,20 +974,23 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    tgl_allocator = &tgl_allocator_release;
     TLS = tgl_state_alloc();
     tgl_set_binlog_mode (TLS, 0);
+    tgl_incr_verbosity (TLS);
+    tgl_incr_verbosity (TLS);
     tgl_incr_verbosity (TLS);
 
     tgl_set_rsa_key(TLS, "/etc/telegram-n9/server.pub");
     tgl_set_rsa_key(TLS, "tg-server.pub");
     tgl_set_callback(TLS, &upd_cb);
-    tgl_set_ev_base(TLS, NULL);
+    tgl_set_ev_base(TLS, this);
     tgl_set_net_methods(TLS, &conn_methods);
     tgl_set_timer_methods(TLS, &my_timers);
     assert(TLS->timer_methods);
     tgl_set_download_directory(TLS, "downloads/");
-    tgl_register_app_id(TLS, TELEGRAM_CLI_APP_ID, TELEGRAM_CLI_APP_HASH);
-    tgl_set_app_version(TLS, "Telegram-cli " TELEGRAM_CLI_VERSION);
+    tgl_register_app_id(TLS, TELEGRAM_N9_APP_ID, TELEGRAM_N9_APP_HASH);
+    tgl_set_app_version(TLS, "Telegram-N9 " TELEGRAM_N9_VERSION);
 //    if (ipv6_enabled)
 //    {
 //        tgl_enable_ipv6 (TLS);
@@ -1058,8 +1018,8 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
     tgl_login (TLS);
 
     // net loop!
-    while (true)
-    {
+//    while (true)
+//    {
 //        if (safe_quit && !TLS->active_queries) {
 //          printf ("All done. Exit\n");
 //          do_halt (0);
@@ -1070,7 +1030,7 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
 //          last_get_state = time (0);
 //        }
 
-        write_state_file ();
+//        write_state_file ();
 //        if (unknown_user_list_pos) {
 //          int i;
 //          for (i = 0; i < unknown_user_list_pos; i++) {
@@ -1078,7 +1038,7 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
 //          }
 //          unknown_user_list_pos = 0;
 //        }
-    }
+//    }
 }
 
 TelegramWindow::~TelegramWindow()
