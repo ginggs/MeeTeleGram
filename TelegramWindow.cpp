@@ -8,10 +8,8 @@
 //#include <sys/stat.h>
 #include <fcntl.h>
 
-extern "C" {
 #include <tgl.h>
 #include <tgl-binlog.h>
-}
 
 #define TELEGRAM_N9_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
 #define TELEGRAM_N9_APP_ID 44097
@@ -977,6 +975,8 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
     tgl_allocator = &tgl_allocator_release;
     TLS = tgl_state_alloc();
     tgl_set_binlog_mode (TLS, 0);
+    tgl_incr_verbosity (TLS);
+    tgl_incr_verbosity (TLS);
     tgl_incr_verbosity (TLS);
     tgl_incr_verbosity (TLS);
     tgl_incr_verbosity (TLS);
