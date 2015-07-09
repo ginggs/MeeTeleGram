@@ -579,7 +579,7 @@ void empty_auth_file(void)
     {
         bl_do_dc_option(TLS, 1, "", 0, TELEGRAM_N9_TEST_SERVER,
             strlen(TELEGRAM_N9_TEST_SERVER), 443);
-        bl_do_set_working_dc(TLS, 1);
+        bl_do_set_working_dc(TLS, 1); //todo(test_code)
 //        bl_do_dc_option(TLS, 1, "", 0, TG_SERVER_TEST_1,
 //            strlen(TG_SERVER_TEST_1), 443);
 //        bl_do_dc_option(TLS, 2, "", 0, TG_SERVER_TEST_2,

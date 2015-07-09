@@ -45,8 +45,8 @@ struct connection: public QObject
             mtproto_methods *mp, QObject *parent = NULL);
 
         void connect_to_server(const char *host, int port);
-        int write(const void *_data, int len);
-        int read(void *_data, int len);
+        int write(const void *data, int len);
+        int read(void *data, int len);
         void flush() { socket.flush(); }
 
     public:
@@ -130,18 +130,22 @@ void connection::connect_to_server(const char *host, int port)
     // 5 seconds for inactivity check (failed connection)
 }
 
-int connection::write(const void *_data, int len)
+int connection::write(const void *data, int len)
 {
     qDebug(__PRETTY_FUNCTION__);
     // buffer data & write
-    return len; // num written
+    qint64 n = socket.write(reinterpret_cast<const char *>(data), len);
+    assert(n==len);
+    return n;
 }
 
-int connection::read(void *_data, int len)
+int connection::read(void *data, int len)
 {
     qDebug(__PRETTY_FUNCTION__);
     // read data from buffer to _data
-    return 0;//num read
+    qint64 n = socket.read(reinterpret_cast<char *>(data), len);
+    assert(n==len);
+    return n;
 }
 
 void connection::connected()
@@ -157,11 +161,14 @@ void connection::connected()
 void connection::disconnected()
 {
     qDebug(__PRETTY_FUNCTION__);
+    // reconnect
+    fail();
 }
 
 void connection::error(QAbstractSocket::SocketError socketError)
 {
     qDebug(__PRETTY_FUNCTION__);
+    fail();
 }
 
 void connection::host_found()
@@ -177,6 +184,7 @@ void connection::state_changed(QAbstractSocket::SocketState socketState)
 void connection::about_to_close()
 {
     qDebug(__PRETTY_FUNCTION__);
+    flush();
 }
 
 void connection::bytes_written(qint64 bytes)
@@ -197,8 +205,7 @@ void connection::ready_read()
     // read into buffer
     // if error, fail_connection()
     // x = readnum
-    int x = 0;
-    if (x)
+    if (socket.bytesAvailable())
         try_rpc_read();
 }
 
