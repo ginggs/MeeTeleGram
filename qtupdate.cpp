@@ -38,15 +38,17 @@ static void secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
     unsigned flags);
 static void our_id_gw(tgl_state *tls, int id);
 static void user_status_upd(tgl_state *tls, tgl_user *U);
-static void get_values(tgl_state *tls, tgl_value_type type, int num_values,
-    void (*callback)(tgl_state *tls, const char *string[], void *arg), void *arg);
+static void get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
+    int num_values,
+    void (*callback)(tgl_state *tls, const char *string[], void *arg),
+    void *arg);
 
 tgl_update_callback upd_cb =
 {
     print_message_gw, // new_msg
     marked_read_upd,
     logprintf,
-    do_get_string,
+    get_values,
     on_login,
     on_started,
     type_notification_upd,
@@ -70,9 +72,7 @@ tgl_update_callback upd_cb =
     0,
     user_status_upd,
     //char *(*create_print_name) (tgl_state *tls, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
-    0,
-    //  void (*get_values)(struct tgl_state *TLS, enum tgl_value_type type, int num_values, int (*callback)(struct tgl_state *TLS, const char *string[], void *arg), void *arg);
-    get_values
+    0
 };
 
 static void print_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
@@ -969,21 +969,51 @@ static void user_status_upd(tgl_state *tls, tgl_user *U)
     printf("\n");
 }
 
-static void get_values(tgl_state *tls, tgl_value_type type, int num_values,
-    void (*callback)(tgl_state *tls, const char *string[], void *arg), void *arg)
+static void get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
+    int num_values,
+    void (*callback)(tgl_state *tls, const char *string[], void *arg),
+    void *arg)
 {
     const char *vs[num_values];
 
     switch (type)
     {
         case tgl_phone_number:
+        case tgl_code:
+        case tgl_cur_password:
         {
-            QString input = QInputDialog::getText(NULL, "yesss!",
-                "Give phone number");
+            QString input = QInputDialog::getText(NULL, "Login",
+                prompt);
             QByteArray raw = input.toUtf8();
             vs[0] = raw.constData();
             break;
         }
+        case tgl_register_info:
+        {
+            // todo
+            qDebug("Registeration!");
+            QString input = QInputDialog::getText(NULL, "Login",
+                prompt);
+            if (input.isEmpty())
+                vs[0] = "n";
+            else
+            {
+                QByteArray raw = input.toUtf8();
+                vs[0] = "y";
+                vs[1] = raw.constData();
+                vs[2] = "V";
+            }
+            break;
+        }
+        case tgl_new_password:
+            qDebug("PASSWD not implemented yet!");
+            return;
+        case tgl_cur_and_new_password:
+            qDebug("PASSWD not implemented yet!");
+            return;
+        case tgl_bot_hash:
+            qDebug("I'm no ta BOT?!");
+            return;
         default:
             qDebug("Unknown data requested!");
             return;
