@@ -339,7 +339,7 @@ static void flush_out(connection *c)
 static void conn_free(connection *c)
 {
     qDebug(__PRETTY_FUNCTION__);
-    delete c;
+    c->deleteLater();
 }
 
 

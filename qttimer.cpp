@@ -86,7 +86,7 @@ static void my_timer_delete(tgl_timer *t)
 
 static void my_timer_free(tgl_timer *t)
 {
-    delete t;
+    t->deleteLater();
 }
 
 #include "qttimer.moc"
