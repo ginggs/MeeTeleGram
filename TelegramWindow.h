@@ -20,6 +20,7 @@ class TelegramWindow : public QMainWindow
 
     private:
         Ui::TelegramWindow *ui;
+        struct tgl_state *tlstate;
 };
 
 #endif // TELEGRAMWINDOW_H

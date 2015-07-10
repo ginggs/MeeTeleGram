@@ -24,6 +24,7 @@ set(telegram_n9_SOURCES ${telegram_n9_HEADERS} ${telegram_n9_UIS}
     main.cpp
     qttimer.cpp
     qtconnection.cpp
+    qtupdate.cpp
 )
 
 # Create output ==============================================================
