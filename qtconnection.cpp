@@ -21,7 +21,7 @@ static tgl_session *get_session(connection *c);
 static void flush_out(connection *c);
 static void conn_free(connection *c);
 
-tgl_net_methods conn_methods =
+tgl_net_methods qtg_net_methods =
 {
     write_out,
     read_in,

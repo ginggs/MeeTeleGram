@@ -16,7 +16,7 @@ static void my_timer_insert (tgl_timer *t, double p);
 static void my_timer_delete (tgl_timer *t);
 static void my_timer_free (tgl_timer *t);
 
-tgl_timer_methods my_timers =
+tgl_timer_methods qtg_timers =
 {
     my_timer_alloc,
     my_timer_insert,

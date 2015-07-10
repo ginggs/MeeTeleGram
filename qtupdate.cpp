@@ -15,35 +15,9 @@
 #include <QObject>
 #include <QInputDialog>
 #include <tgl.h>
+#include "qtelegram.h"
 
-extern bool binlog_read;
-
-void write_auth_file(tgl_state *tlstate);
-void write_secret_chat_file();
-
-static void print_message_gw(tgl_state *tls, tgl_message *m);
-static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[]);
-static void logprintf(const char *format, ...);
-static void do_get_string(tgl_state *tls, const char *prompt, int flags,
-    void (*cb)(tgl_state *, const char *, void *), void *arg);
-static void on_login(tgl_state *tls);
-static void on_started(tgl_state *tls);
-static void type_notification_upd(tgl_state *tls, tgl_user *U,
-    enum tgl_typing_status status);
-static void type_in_chat_notification_upd(tgl_state *tls, tgl_user *U,
-    tgl_chat *C, enum tgl_typing_status status);
-static void user_update_gw(tgl_state *tls, tgl_user *U, unsigned flags);
-static void chat_update_gw(tgl_state *tls, tgl_chat *U, unsigned flags);
-static void secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
-    unsigned flags);
-static void our_id_gw(tgl_state *tls, int id);
-static void user_status_upd(tgl_state *tls, tgl_user *U);
-static void get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
-    int num_values,
-    void (*callback)(tgl_state *tls, const char *string[], void *arg),
-    void *arg);
-
-tgl_update_callback upd_cb =
+tgl_update_callback qtelegram::qtg_update_cb =
 {
     print_message_gw, // new_msg
     marked_read_upd,
@@ -528,7 +502,7 @@ static void print_message(tgl_state *tls, tgl_message *M)
     }
     if (!tgl_get_peer_type(M->to_id))
     {
-        logprintf("Bad msg\n");
+        qDebug("Bad msg\n");
         return;
     }
 
@@ -601,17 +575,18 @@ static void print_message(tgl_state *tls, tgl_message *M)
     printf("\n");
 }
 
-static void print_message_gw(tgl_state *tls, tgl_message *m)
+void qtelegram::print_message_gw(tgl_state *tls, tgl_message *m)
 {
     qDebug(__PRETTY_FUNCTION__);
-    if (!binlog_read)
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    if (!qtg->enable_events)
     {
         qDebug("\t!binlog_read, returning");
         return;
     }
     if (tgl_get_peer_type(m->to_id) == TGL_PEER_ENCR_CHAT)
     {
-        write_secret_chat_file();
+        qtg->write_secret_chat_file();
     }
     print_message(tls, m);
 }
@@ -684,10 +659,11 @@ static void print_read_list(tgl_state *TLS, int num, tgl_message *list[])
         }
 }
 
-static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[])
+void qtelegram::marked_read_upd(tgl_state *tls, int num, tgl_message *list[])
 {
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
     qDebug(__PRETTY_FUNCTION__);
-    if (!binlog_read)
+    if (!qtg->enable_events)
     {
         qDebug("\t!binlog_read, returning");
         return;
@@ -697,7 +673,7 @@ static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[])
     print_read_list(tls, num, list);
 }
 
-static void logprintf(const char *format, ...)
+void qtelegram::logprintf(const char *format, ...)
 {
     int x = 0;
     printf(" *** ");
@@ -707,24 +683,14 @@ static void logprintf(const char *format, ...)
     va_end(ap);
 }
 
-static void do_get_string(tgl_state *tls, const char *prompt, int flags,
-    void (*cb)(tgl_state *, const char *, void *), void *arg)
+void qtelegram::on_login(tgl_state *tls)
 {
     qDebug(__PRETTY_FUNCTION__);
-  // flags & 1: don't echo user input!
-    QString input = QInputDialog::getText(NULL, "Input!", prompt,
-        flags & 1 ? QLineEdit::Password : QLineEdit::Normal);
-    QByteArray raw = input.toUtf8();
-    cb(tls, raw.constData(), arg);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    qtg->write_auth_file();
 }
 
-static void on_login(tgl_state *tls)
-{
-    qDebug(__PRETTY_FUNCTION__);
-    write_auth_file(tls);
-}
-
-static void on_started(tgl_state *tls)
+void qtelegram::on_started(tgl_state *tls)
 {
     qDebug(__PRETTY_FUNCTION__);
 //  if (wait_dialog_list) { // boolean, user option
@@ -734,7 +700,7 @@ static void on_started(tgl_state *tls)
 //  }
 }
 
-static void type_notification_upd(tgl_state *tls, tgl_user *U,
+void qtelegram::type_notification_upd(tgl_state *tls, tgl_user *U,
     enum tgl_typing_status status)
 {
     qDebug(__PRETTY_FUNCTION__);
@@ -745,7 +711,7 @@ static void type_notification_upd(tgl_state *tls, tgl_user *U,
     printf("\n");
 }
 
-static void type_in_chat_notification_upd(tgl_state *tls, tgl_user *U,
+void qtelegram::type_in_chat_notification_upd(tgl_state *tls, tgl_user *U,
     tgl_chat *C, enum tgl_typing_status status)
 {
     qDebug(__PRETTY_FUNCTION__);
@@ -818,11 +784,12 @@ static void print_peer_updates(int flags)
     }
 }
 
-static void user_update_gw(tgl_state *tls, tgl_user *U, unsigned flags)
+void qtelegram::user_update_gw(tgl_state *tls, tgl_user *U, unsigned flags)
 {
     qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
 
-    if (!binlog_read)
+    if (!qtg->enable_events)
     {
         qDebug("binlog not read!");
         return;
@@ -844,11 +811,12 @@ static void user_update_gw(tgl_state *tls, tgl_user *U, unsigned flags)
     }
 }
 
-static void chat_update_gw(tgl_state *tls, tgl_chat *U, unsigned flags)
+void qtelegram::chat_update_gw(tgl_state *tls, tgl_chat *U, unsigned flags)
 {
     qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
 
-    if (!binlog_read)
+    if (!qtg->enable_events)
     {
         qDebug("binlog not read!");
         return;
@@ -871,17 +839,18 @@ static void chat_update_gw(tgl_state *tls, tgl_chat *U, unsigned flags)
     }
 }
 
-static void secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
+void qtelegram::secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
     unsigned flags)
 {
     qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
 
     if ((flags & TGL_UPDATE_WORKING) || (flags & TGL_UPDATE_DELETED))
     {
-        write_secret_chat_file();
+        qtg->write_secret_chat_file();
     }
 
-    if (!binlog_read)
+    if (!qtg->enable_events)
     {
         return;
     }
@@ -908,7 +877,7 @@ static void secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
     }
 }
 
-static void our_id_gw(tgl_state *tls, int id)
+void qtelegram::our_id_gw(tgl_state *tls, int id)
 {
     qDebug(__PRETTY_FUNCTION__);
 }
@@ -955,10 +924,11 @@ static void print_user_status(tgl_user_status *S)
     }
 }
 
-static void user_status_upd(tgl_state *tls, tgl_user *U)
+void qtelegram::user_status_upd(tgl_state *tls, tgl_user *U)
 {
     qDebug(__PRETTY_FUNCTION__);
-    if (!binlog_read)
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    if (!qtg->enable_events)
     {
         return;
     }
@@ -969,7 +939,7 @@ static void user_status_upd(tgl_state *tls, tgl_user *U)
     printf("\n");
 }
 
-static void get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
+void qtelegram::get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
     int num_values,
     void (*callback)(tgl_state *tls, const char *string[], void *arg),
     void *arg)

@@ -16,7 +16,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/tgl/build/libs)
 
 # Sources ====================================================================
 # .ui files are listed so that QtCreator will list them in the project tree
-set(src_pairs TelegramWindow)
+set(src_pairs TelegramWindow qtelegram)
 set(telegram_n9_UIS TelegramWindow.ui)
 set(telegram_n9_HEADERS $<JOIN:${src_pairs},.h >)
 set(telegram_n9_SOURCES ${telegram_n9_HEADERS} ${telegram_n9_UIS}

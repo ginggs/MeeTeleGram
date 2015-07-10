@@ -2,6 +2,7 @@
 #define TELEGRAMWINDOW_H
 
 #include <QMainWindow>
+#include "qtelegram.h"
 
 namespace Ui {
 class TelegramWindow;
@@ -20,7 +21,7 @@ class TelegramWindow : public QMainWindow
 
     private:
         Ui::TelegramWindow *ui;
-        struct tgl_state *tlstate;
+        qtelegram qtlg;
 };
 
 #endif // TELEGRAMWINDOW_H
