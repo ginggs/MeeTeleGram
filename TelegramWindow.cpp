@@ -13,8 +13,7 @@
 #define TELEGRAM_N9_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
 #define TELEGRAM_N9_APP_ID 44097
 #define TELEGRAM_N9_VERSION "1.0.0"
-// TEST: :443
-// Product: :443
+
 #define TELEGRAM_N9_TEST_SERVER "149.154.167.40"
 #define TELEGRAM_N9_PROD_SERVER "149.154.167.50"
 
@@ -43,7 +42,7 @@ void empty_auth_file(tgl_state *tlstate)
     {
         bl_do_dc_option(tlstate, 1, "", 0, TELEGRAM_N9_TEST_SERVER,
             strlen(TELEGRAM_N9_TEST_SERVER), 443);
-        bl_do_set_working_dc(tlstate, 0); //todo(test_code)
+        bl_do_set_working_dc(tlstate, 1); //todo(test_code)
 //        bl_do_dc_option(tlstate, 1, "", 0, TG_SERVER_TEST_1,
 //            strlen(TG_SERVER_TEST_1), 443);
 //        bl_do_dc_option(tlstate, 2, "", 0, TG_SERVER_TEST_2,
@@ -395,6 +394,7 @@ TelegramWindow::TelegramWindow(QWidget *parent) :
 
 TelegramWindow::~TelegramWindow()
 {
+    write_state_file(tlstate);
     delete ui;
 }
 
