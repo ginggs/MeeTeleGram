@@ -40,8 +40,8 @@ qtelegram::qtelegram(int app_id, const char *app_hash, const char *app_ver,
     tgl_allocator = &tgl_allocator_release;
     tgl_set_binlog_mode (tlstate, 0);
 
-    tgl_set_verbosity(tlstate, 4);
-    tgl_set_test_mode(tlstate); // todo(test_code) remove for production
+    tgl_set_verbosity(tlstate, 6);
+//    tgl_set_test_mode(tlstate); // todo(test_code) remove for production
 
     tgl_set_rsa_key(tlstate, "tg-server.pub");
     tgl_set_rsa_key(tlstate, serverkey_path);
@@ -88,7 +88,12 @@ void qtelegram::login()
     tgl_login (tlstate);
 
     get_state_timer = startTimer(3600 * 1000);
-    startTimer(0);
+//    startTimer(0);
+}
+
+void qtelegram::request_contact_list()
+{
+    tgl_do_update_contact_list(tlstate, on_contact_list_updated, this);
 }
 
 QString qtelegram::auth_key_filename()
@@ -439,4 +444,24 @@ void qtelegram::timerEvent(QTimerEvent* event)
         qDebug("* hourly state lookup *");
         tgl_do_lookup_state(tlstate);
     }
+}
+
+void print_user_name(tgl_peer_id_t id, tgl_peer_t *U);
+
+void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
+    int success, int size, tgl_user *contacts[])
+{
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
+
+    printf("Contact list received: ");
+    for (int i = size - 1; i >= 0; i--)
+    {
+        print_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
+        printf("\n");
+    }
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+    else
+        emit qtg->contact_list_received(contacts, size);
 }

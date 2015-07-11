@@ -65,7 +65,7 @@ static void print_encr_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
         printf("%s", C->print_name);
 }
 
-static void print_user_name(tgl_peer_id_t id, tgl_peer_t *U)
+void print_user_name(tgl_peer_id_t id, tgl_peer_t *U)
 {
     if (!U)
     {
@@ -688,6 +688,8 @@ void qtelegram::on_login(tgl_state *tls)
     qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
     qtg->write_auth_file();
+//    qtg->request_contact_list();
+    emit qtg->logged_in();
 }
 
 void qtelegram::on_started(tgl_state *tls)

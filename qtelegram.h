@@ -27,6 +27,13 @@ class qtelegram: public QObject
 
         void login();
 
+        void request_contact_list();
+
+    signals:
+        void error(int error_code, const char *error);
+        void logged_in();
+        void contact_list_received(tgl_user *contacts[], int size);
+
     private:
         static tgl_update_callback qtg_update_cb;
         const QString config_dir;
@@ -56,8 +63,6 @@ class qtelegram: public QObject
         static void print_message_gw(tgl_state *tls, tgl_message *m);
         static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[]);
         static void logprintf(const char *format, ...);
-        static void do_get_string(tgl_state *tls, const char *prompt, int flags,
-            void (*cb)(tgl_state *, const char *, void *), void *arg);
         static void on_login(tgl_state *tls);
         static void on_started(tgl_state *tls);
         static void type_notification_upd(tgl_state *tls, tgl_user *U,
@@ -74,6 +79,9 @@ class qtelegram: public QObject
             int num_values,
             void (*callback)(tgl_state *tls, const char *string[], void *arg),
             void *arg);
+
+        static void on_contact_list_updated(tgl_state *tls,
+            void *qtptr, int success, int size, tgl_user *contacts[]);
 };
 
 #endif /* QTELEGRAM_H_ */
