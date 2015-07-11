@@ -157,6 +157,8 @@ int connection::read(void *data, int len)
 
         if (len > read)
         {
+            qDebug() << "NETWORK: not enough bytes in read buffer, reading from socket: "
+                    << len - read;
             char *rem_data = reinterpret_cast<char *>(data) + read;
             read += socket.read(rem_data, len - read);
         }
@@ -183,7 +185,11 @@ void connection::disconnected()
 void connection::error(QAbstractSocket::SocketError socketError)
 {
     qDebug(__PRETTY_FUNCTION__);
-    fail();
+    qDebug() << "error: " << socketError;
+    if (socketError == QAbstractSocket::SocketTimeoutError)
+        fail();
+    else
+        qDebug("Not retrying!");
 }
 
 void connection::host_found()
@@ -194,6 +200,7 @@ void connection::host_found()
 void connection::state_changed(QAbstractSocket::SocketState socketState)
 {
     qDebug(__PRETTY_FUNCTION__);
+    qDebug() << "New sate: " << socketState;
 }
 
 void connection::about_to_close()
@@ -216,6 +223,7 @@ void connection::ready_read()
 {
     // restart ping timer
     int newbytes = socket.bytesAvailable();
+    qDebug() << "New bytes received: " << newbytes;
     if (newbytes > 1024 * 1024)
         newbytes = 1024 * 1024;
 

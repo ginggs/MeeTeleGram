@@ -17,6 +17,8 @@
  */
 class qtelegram: public QObject
 {
+        Q_OBJECT;
+
     public:
         qtelegram(int app_id, const char *app_hash, const char *app_ver,
             const char *conf_dir, const char *serverkey_path,

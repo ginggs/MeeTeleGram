@@ -946,6 +946,7 @@ void qtelegram::get_values(tgl_state *tls, tgl_value_type type, const char *prom
 {
     const char *vs[num_values];
 
+    qDebug("Get Values");
     switch (type)
     {
         case tgl_phone_number:
