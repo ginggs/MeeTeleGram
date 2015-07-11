@@ -58,6 +58,7 @@ struct connection: public QObject
         QTcpSocket socket;
         mtproto_methods *methods;
         QByteArray read_buffer;
+        int server_port;
 
     private slots:
         void connected();
@@ -75,6 +76,7 @@ struct connection: public QObject
     private:
         void fail()
         {
+            methods->close(tl_state, this);
             int new_port = rotate_port();
             QByteArray addr = socket.peerName().toUtf8();
             connect_to_server(addr.data(), new_port);
@@ -82,7 +84,7 @@ struct connection: public QObject
 
         int rotate_port()
         {
-            switch (socket.peerPort())
+            switch (server_port)
             {
                 case 443:
                     return 80;
@@ -91,6 +93,7 @@ struct connection: public QObject
                 case 25:
                     return 443;
             }
+            return 443;
         }
 
         qint64 available_bytes();
@@ -101,7 +104,7 @@ struct connection: public QObject
 connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
     mtproto_methods *mp, QObject *parent) :
         QObject(parent), tl_state(tls), socket(this), session(s), dc(dc),
-        methods(mp)
+        methods(mp), server_port(0)
 {
     socket.setSocketOption(QAbstractSocket::LowDelayOption, 1);
     socket.setSocketOption(QAbstractSocket::KeepAliveOption, 1);
@@ -124,6 +127,8 @@ connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
 void connection::connect_to_server(const char *host, int port)
 {
     qDebug(__PRETTY_FUNCTION__);
+    qDebug() << "Connecting to: " << host << ':' << port;
+    server_port = port;
     socket.connectToHost(host, port);
     // todo implement pinging the server
 //  c->last_receive_time = tglt_get_double_time ();
