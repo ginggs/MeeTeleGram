@@ -688,7 +688,7 @@ void qtelegram::on_login(tgl_state *tls)
     qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
     qtg->write_auth_file();
-//    qtg->request_contact_list();
+    qtg->request_contact_list();
     emit qtg->logged_in();
 }
 
