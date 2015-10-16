@@ -40,7 +40,7 @@ qtelegram::qtelegram(int app_id, const char *app_hash, const char *app_ver,
     tgl_allocator = &tgl_allocator_release;
     tgl_set_binlog_mode (tlstate, 0);
 
-    tgl_set_verbosity(tlstate, 6);
+    tgl_set_verbosity(tlstate, 5);
 //    tgl_set_test_mode(tlstate); // todo(test_code) remove for production
 
     tgl_set_rsa_key(tlstate, "tg-server.pub");
@@ -170,7 +170,7 @@ void qtelegram::empty_auth_file()
     qDebug(__PRETTY_FUNCTION__);
     if (tlstate->test_mode)
     {
-        bl_do_dc_option(tlstate, 0, "default", strlen("default"), TELEGRAM_N9_TEST_SERVER,
+        bl_do_dc_option(tlstate, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_TEST_SERVER,
             strlen(TELEGRAM_N9_TEST_SERVER), 443);
         bl_do_set_working_dc(tlstate, 0);
 //        bl_do_dc_option(tlstate, 1, "", 0, TG_SERVER_TEST_1,
@@ -183,7 +183,7 @@ void qtelegram::empty_auth_file()
     }
     else
     {
-        bl_do_dc_option(tlstate, 0, "default", strlen("default"), TELEGRAM_N9_PROD_SERVER,
+        bl_do_dc_option(tlstate, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_PROD_SERVER,
             strlen(TELEGRAM_N9_PROD_SERVER), 443);
         bl_do_set_working_dc(tlstate, 0);
 //        bl_do_dc_option(tlstate, 1, "", 0, TG_SERVER_1, strlen(TG_SERVER_1), 443);
