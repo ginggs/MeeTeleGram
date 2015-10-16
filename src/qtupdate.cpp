@@ -1,4 +1,4 @@
-/**
+/*
  * qtupdate.cpp
  *
  *  Created on: ۱۹ تیر ۱۳۹۴ ه‍.ش.

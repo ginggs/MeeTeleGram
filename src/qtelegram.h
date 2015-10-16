@@ -1,4 +1,4 @@
-/**
+/*
  * qtelegram.h
  *
  *  Created on: ۱۹ تیر ۱۳۹۴ ه‍.ش.

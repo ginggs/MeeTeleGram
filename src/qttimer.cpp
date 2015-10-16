@@ -1,4 +1,4 @@
-/**
+/*
  * qttimers.cpp
  *
  *  Created on: ۱۸ تیر ۱۳۹۴ ه‍.ش.
