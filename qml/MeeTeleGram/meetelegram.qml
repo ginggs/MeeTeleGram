@@ -8,4 +8,8 @@ PageStackWindow {
         console.log("HIHIHIHI");
         telegram.login();
     }
+    Connections {
+        target: telegram
+        onLogged_in: console.log("Logged in!")
+    }
 }
