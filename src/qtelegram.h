@@ -25,9 +25,9 @@ class qtelegram: public QObject
             QObject *parent = NULL);
         ~qtelegram();
 
-        void login();
+        Q_INVOKABLE void login();
 
-        void request_contact_list();
+        Q_INVOKABLE void request_contact_list();
 
     signals:
         void error(int error_code, const char *error);

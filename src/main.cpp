@@ -23,6 +23,13 @@
 #include <QDeclarativeContext>
 #include "qmlapplicationviewer.h"
 #include "setting.h"
+#include "qtelegram.h"
+#include <QDesktopServices>
+
+#define APP_NAME "MeeTeleGram"
+#define MEETELEGRAM_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
+#define MEETELEGRAM_APP_ID 44097
+#define MEETELEGRAM_VERSION "1.0.0"
 
 
 void myMessageOutput(QtMsgType type, const char *msg)
@@ -45,7 +52,7 @@ void myMessageOutput(QtMsgType type, const char *msg)
 
 Q_DECL_EXPORT int main(int argc, char *argv[])
 {
-//    qInstallMsgHandler(myMessageOutput);
+    qInstallMsgHandler(myMessageOutput);
 
     QScopedPointer<QApplication> app(createApplication(argc, argv));
 
@@ -63,6 +70,14 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");
     viewer.rootContext()->setContextProperty("settings", &settings);
+
+    QString confdir = QDesktopServices::storageLocation(
+        QDesktopServices::DataLocation) + "/" APP_NAME "/";
+    qtelegram qtlg(MEETELEGRAM_APP_ID,
+                MEETELEGRAM_APP_HASH, APP_NAME " " MEETELEGRAM_VERSION,
+                confdir.toUtf8().constData(),
+                "/opt/MeeTeleGram/server.pub");
+    viewer.rootContext()->setContextProperty("telegram", &qtlg);
 
     viewer.setOrientation(QmlApplicationViewer::ScreenOrientationAuto);
     viewer.setMainQmlFile(QLatin1String("qml/MeeTeleGram/meetelegram.qml"));

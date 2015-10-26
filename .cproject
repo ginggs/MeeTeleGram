@@ -18,7 +18,7 @@
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.1997581477.1769411423" name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.base.1541609237" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.target.gnu.platform.base.1048787423" name="Debug Platform" osList="linux,hpux,aix,qnx" superClass="cdt.managedbuild.target.gnu.platform.base"/>
-							<builder buildPath="${workspace_loc:/telegram-n9/build.o}" id="cdt.managedbuild.target.gnu.builder.base.1945409485" incrementalBuildTarget="all VERBOSE=1" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base"/>
+							<builder buildPath="/home/hedayat/Projects/harmattan-projects/build-meetelegram-N9-Debug" command="/home/hedayat/.local/bin/sbox/make" id="cdt.managedbuild.target.gnu.builder.base.1945409485" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.415944513" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1335898876" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.2050960454" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>

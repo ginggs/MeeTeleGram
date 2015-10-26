@@ -50,7 +50,7 @@ qtelegram::qtelegram(int app_id, const char *app_hash, const char *app_ver,
     tgl_set_net_methods(tlstate, &qtg_net_methods);
     tgl_set_timer_methods(tlstate, &qtg_timers);
     tgl_set_download_directory(tlstate,
-        (config_dir + "/downloads/").toUtf8().data());
+        (config_dir + "/downloads/").toUtf8().constData());
     tgl_register_app_id(tlstate, app_id, app_hash);
     tgl_set_app_version(tlstate, app_ver);
 //    if (ipv6_enabled)
