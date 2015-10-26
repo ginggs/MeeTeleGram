@@ -73,6 +73,9 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     QString confdir = QDesktopServices::storageLocation(
         QDesktopServices::DataLocation) + "/" APP_NAME "/";
+
+    qDebug() << "Config dir: " << confdir;
+    QDir().mkpath(confdir);
     qtelegram qtlg(MEETELEGRAM_APP_ID,
                 MEETELEGRAM_APP_HASH, APP_NAME " " MEETELEGRAM_VERSION,
                 confdir.toUtf8().constData(),
