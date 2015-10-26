@@ -29,7 +29,8 @@ extern tgl_timer_methods qtg_timers;
 qtelegram::qtelegram(int app_id, const char *app_hash, const char *app_ver,
     const char *conf_dir, const char *serverkey_path, QObject *parent) :
         QObject(parent), config_dir(conf_dir), tlstate(tgl_state_alloc()),
-        enable_events(false), get_state_timer(0)
+        enable_events(false), get_state_timer(0), getvalues_cb(0),
+        getvalues_arg(0)
 {
     if (!tlstate)
     {
@@ -95,6 +96,43 @@ void qtelegram::login()
 void qtelegram::request_contact_list()
 {
     tgl_do_update_contact_list(tlstate, on_contact_list_updated, this);
+}
+
+void qtelegram::set_phone_number(QString number)
+{
+    const char *vs[] = { number.toUtf8().constData() };
+    call_getvalue_callback(vs);
+}
+
+void qtelegram::set_code(QString code)
+{
+    const char *vs[] = { code.toUtf8().constData() };
+    call_getvalue_callback(vs);
+}
+
+void qtelegram::set_current_pass(QString pass)
+{
+    const char *vs[] = { pass.toUtf8().constData() };
+    call_getvalue_callback(vs);
+}
+
+void qtelegram::set_register_info(QString name, QString lastname)
+{
+    const char *vs[] = { "y", name.toUtf8().constData(),
+            lastname.toUtf8().constData() };
+    call_getvalue_callback(vs);
+}
+
+void qtelegram::set_new_password(QString pass)
+{
+    const char *vs[] = { pass.toUtf8().constData() };
+    call_getvalue_callback(vs);
+}
+
+void qtelegram::set_cur_and_new_password(QString curp, QString newp)
+{
+    const char *vs[] = { curp.toUtf8().constData(), newp.toUtf8().constData() };
+    call_getvalue_callback(vs);
 }
 
 QString qtelegram::auth_key_filename()
@@ -418,6 +456,13 @@ void qtelegram::read_secret_chat(int fd, int v)
 //    TGLECF_CREATE | TGLECF_CREATED
 //  );
 
+}
+
+void qtelegram::call_getvalue_callback(const char *values[])
+{
+    getvalues_cb(tlstate, values, getvalues_arg);
+    getvalues_cb = NULL;
+    getvalues_arg = NULL;
 }
 
 void qtelegram::timerEvent(QTimerEvent* event)

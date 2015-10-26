@@ -941,49 +941,52 @@ void qtelegram::user_status_upd(tgl_state *tls, tgl_user *U)
     printf("\n");
 }
 
-void qtelegram::get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
-    int num_values,
-    void (*callback)(tgl_state *tls, const char *string[], void *arg),
-    void *arg)
+void qtelegram::get_values(tgl_state *tls, tgl_value_type type,
+    const char *prompt, int /*num_values*/, getvalues_callback callback, void *arg)
 {
-    const char *vs[num_values];
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+
+    assert(qtg->getvalues_cb == NULL);
+    qtg->getvalues_cb = callback;
+    qtg->getvalues_arg = arg;
 
     qDebug("Get Values");
     switch (type)
     {
         case tgl_phone_number:
+            emit qtg->phone_number_requested();
+            break;
         case tgl_code:
+            emit qtg->code_requested();
+            break;
         case tgl_cur_password:
-        {
-            QString input = QInputDialog::getText(NULL, "Login",
-                prompt);
-            QByteArray raw = input.toUtf8();
-            vs[0] = raw.constData();
+            emit qtg->current_pass_requested();
             break;
-        }
         case tgl_register_info:
-        {
-            // todo
-            qDebug("Registeration!");
-            QString input = QInputDialog::getText(NULL, "Login",
-                prompt);
-            if (input.isEmpty())
-                vs[0] = "n";
-            else
-            {
-                QByteArray raw = input.toUtf8();
-                vs[0] = "y";
-                vs[1] = raw.constData();
-                vs[2] = "V";
-            }
+            emit qtg->register_info_requested();
             break;
-        }
+//        {
+//            // todo
+//            qDebug("Registeration!");
+//            QString input = QInputDialog::getText(NULL, "Login",
+//                prompt);
+//            if (input.isEmpty())
+//                vs[0] = "n";
+//            else
+//            {
+//                QByteArray raw = input.toUtf8();
+//                vs[0] = "y";
+//                vs[1] = raw.constData();
+//                vs[2] = "V";
+//            }
+//            break;
+//        }
         case tgl_new_password:
-            qDebug("PASSWD not implemented yet!");
-            return;
+            emit qtg->new_password_requested();
+            break;
         case tgl_cur_and_new_password:
-            qDebug("PASSWD not implemented yet!");
-            return;
+            emit qtg->cur_and_new_password_requested();
+            break;
         case tgl_bot_hash:
             qDebug("I'm no ta BOT?!");
             return;
@@ -991,5 +994,4 @@ void qtelegram::get_values(tgl_state *tls, tgl_value_type type, const char *prom
             qDebug("Unknown data requested!");
             return;
     }
-    callback(tls, vs, arg);
 }

@@ -19,6 +19,10 @@ class qtelegram: public QObject
 {
         Q_OBJECT;
 
+    private:
+        typedef void (*getvalues_callback)(tgl_state *tls, const char *string[],
+            void *arg);
+
     public:
         qtelegram(int app_id, const char *app_hash, const char *app_ver,
             const char *conf_dir, const char *serverkey_path,
@@ -29,10 +33,23 @@ class qtelegram: public QObject
 
         Q_INVOKABLE void request_contact_list();
 
+        Q_INVOKABLE void set_phone_number(QString number);
+        Q_INVOKABLE void set_code(QString code);
+        Q_INVOKABLE void set_current_pass(QString pass);
+        Q_INVOKABLE void set_register_info(QString name, QString lastname);
+        Q_INVOKABLE void set_new_password(QString pass);
+        Q_INVOKABLE void set_cur_and_new_password(QString curp, QString newp);
+
     signals:
         void error(int error_code, const char *error);
         void logged_in();
         void contact_list_received(tgl_user *contacts[], int size);
+        void phone_number_requested();
+        void code_requested();
+        void current_pass_requested();
+        void register_info_requested();
+        void new_password_requested();
+        void cur_and_new_password_requested();
 
     private:
         static tgl_update_callback qtg_update_cb;
@@ -42,6 +59,8 @@ class qtelegram: public QObject
         bool enable_events;
         int get_state_timer;
 
+        getvalues_callback getvalues_cb;
+        void *getvalues_arg;
 
         QString auth_key_filename();
         void read_auth_file();
@@ -57,6 +76,8 @@ class qtelegram: public QObject
         void read_secret_chat_file();
         void write_secret_chat_file();
         void read_secret_chat(int fd, int v);
+
+        void call_getvalue_callback(const char *values[]);
 
         void timerEvent(QTimerEvent *event);
 
@@ -75,9 +96,8 @@ class qtelegram: public QObject
             unsigned flags);
         static void our_id_gw(tgl_state *tls, int id);
         static void user_status_upd(tgl_state *tls, tgl_user *U);
-        static void get_values(tgl_state *tls, tgl_value_type type, const char *prompt,
-            int num_values,
-            void (*callback)(tgl_state *tls, const char *string[], void *arg),
+        static void get_values(tgl_state *tls, tgl_value_type type,
+            const char *prompt, int num_values, getvalues_callback callback,
             void *arg);
 
         static void on_contact_list_updated(tgl_state *tls,
