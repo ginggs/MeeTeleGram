@@ -51,3 +51,6 @@ INCLUDEPATH += tgl/ tgl/build
 LIBS += -L $$PWD/tgl/build/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
 
 include(src/src.pri)
+
+DISTFILES += \
+    qml/MeeTeleGram/MainPage.qml

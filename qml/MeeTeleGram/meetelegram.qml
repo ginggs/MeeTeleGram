@@ -4,6 +4,12 @@ import com.nokia.meego 1.0
 PageStackWindow {
     id: mainwindow
 
+    initialPage: mainPage
+
+    MainPage {
+        id: mainPage
+    }
+
     Component.onCompleted: {
         console.log("HIHIHIHI");
         telegram.login();
