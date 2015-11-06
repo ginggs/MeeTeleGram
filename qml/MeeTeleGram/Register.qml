@@ -11,7 +11,7 @@ Sheet {
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
 
-    acceptButtonText: qsTr("Register")
+    acceptButtonText: qsTr("Continue")
     rejectButtonText: qsTr("Cancel")
 
     content: /*Item {
