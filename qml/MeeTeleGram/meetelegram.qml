@@ -36,7 +36,7 @@ PageStackWindow {
         target: telegram
         onLogged_in: {
             console.log("Logged in!")
-            telegram.request_contact_list()
+//            telegram.request_contact_list()
         }
         onContact_list_received: {
             console.log("Contact list received: num = " + size)
