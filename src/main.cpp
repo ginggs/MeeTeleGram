@@ -29,7 +29,7 @@
 #define APP_NAME "MeeTeleGram"
 #define MEETELEGRAM_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
 #define MEETELEGRAM_APP_ID 44097
-#define MEETELEGRAM_VERSION "1.0.0"
+#define MEETELEGRAM_VERSION "0.0.0"
 
 
 void myMessageOutput(QtMsgType type, const char *msg)
