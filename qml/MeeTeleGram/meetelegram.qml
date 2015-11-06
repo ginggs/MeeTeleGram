@@ -23,15 +23,32 @@ PageStackWindow {
         onRejected: Qt.quit()
     }
 
+    CodeRequest {
+        id: code_request
+        onAccepted: {
+            telegram.set_code(code)
+            console.log("Code entered: " + code)
+        }
+        onRejected: Qt.quit()
+    }
+
     Connections {
         target: telegram
-        onLogged_in: console.log("Logged in!")
-        onContact_list_received: console.log("Contact list received: num = " + size)
+        onLogged_in: {
+            console.log("Logged in!")
+            telegram.request_contact_list()
+        }
+        onContact_list_received: {
+            console.log("Contact list received: num = " + size)
+        }
         onPhone_number_requested: {
             console.log("ask phone num")
             register_sheet.open()
         }
-        onCode_requested: console.log("ask code")
+        onCode_requested: {
+            console.log("ask code")
+            code_request.open()
+        }
         onCurrent_pass_requested: console.log("ask curent pass")
         onRegister_info_requested: {
             console.log("ask register info")
