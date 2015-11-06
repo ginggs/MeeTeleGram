@@ -137,7 +137,7 @@ void qtelegram::set_cur_and_new_password(QString curp, QString newp)
 
 QString qtelegram::auth_key_filename()
 {
-    return config_dir + "/AUTH_FILE";
+    return config_dir + "/auth_key";
 }
 
 void qtelegram::read_auth_file()
@@ -284,7 +284,7 @@ void qtelegram::write_dc(struct tgl_dc *DC, void *extra)
 
 QString qtelegram::state_filename()
 {
-    return config_dir + "/STATE_FILE";
+    return config_dir + "/tgl_state";
 }
 
 void qtelegram::read_state_file()
