@@ -1,6 +1,7 @@
 import QtQuick 1.1
 import com.nokia.meego 1.0
 
+
 Page {
     signal showAbout
 
@@ -16,6 +17,7 @@ Page {
     {
         // sample signal connection: mainPage.addLocation.connect(locationWindow.addLocation)
     }
+
 
     ToolBarLayout {
         id: commonTools
@@ -40,13 +42,11 @@ Page {
     QueryDialog {
         id: aboutDialog
 
-        icon: "/opt/Prayers/icons/Prayers80.png"
-        titleText: qsTr("About Prayers 1.0")
-        message: qsTr("Copyright (C) 2013 <br/><br/>    \
+        icon: "/opt/MeeTeleGram/icons/MeeTeleGram.png"
+        titleText: qsTr("About MeeTeleGram 0.0")
+        message: qsTr("Copyright (C) 2015 <br/><br/>    \
             <b>Hedayat Vatankhah</b>  <br/><br/>        \
             License: GNU GPLv3+<br/><br/>               \
-            Thanks to: PrayerTimes <br/>                 \
-            http://praytimes.org<br/><br/>              \
             This program comes with ABSOLUTELY NO WARRANTY. \
             This is free software, and you are welcome to redistribute it   \
             under terms of GNU GPL version 3 (or later). <br/>  \
