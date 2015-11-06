@@ -66,7 +66,6 @@ Sheet {
                 }
                 TextField {
                     id: phone_number
-                    validator: IntValidator {}
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
                     width: parent.width - parent.children[0].width - 20 - parent.spacing
                 }
