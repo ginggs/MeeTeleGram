@@ -79,7 +79,7 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     qtelegram qtlg(MEETELEGRAM_APP_ID,
                 MEETELEGRAM_APP_HASH, APP_NAME " " MEETELEGRAM_VERSION,
                 confdir.toUtf8().constData(),
-                "/opt/MeeTeleGram/server.pub");
+                "/opt/MeeTeleGram/tg-server.pub");
     viewer.rootContext()->setContextProperty("telegram", &qtlg);
 
     viewer.setOrientation(QmlApplicationViewer::ScreenOrientationAuto);

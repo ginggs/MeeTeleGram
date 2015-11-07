@@ -45,7 +45,13 @@ splash.files = images/splash.jpeg images/splash-l.jpeg
 splash.path = /opt/MeeTeleGram/
 export(splash.files)
 export(splash.path)
-INSTALLS += splash
+
+server_pubkey.files = tg-server.pub
+server_pubkey.path = /opt/MeeTeleGram/
+export(server_pubkey.files)
+export(server_pubkey.path)
+
+INSTALLS += splash server_pubkey
 
 INCLUDEPATH += tgl/ tgl/build
 LIBS += -L $$PWD/tgl/build/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
