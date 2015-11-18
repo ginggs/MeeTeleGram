@@ -256,7 +256,12 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
 
 static void print_media(tgl_message_media *M)
 {
-    assert(M);
+    if (!M)
+    {
+        printf("[NULL media!]");
+        return;
+    }
+
     switch (M->type)
     {
         case tgl_message_media_none:
@@ -479,7 +484,12 @@ static void print_media(tgl_message_media *M)
 
             printf("]");
             return;
-
+        case tgl_message_media_video:
+            printf("[print_video]");
+            break;
+        case tgl_message_media_audio:
+            printf("[print_audio]");
+            break;
         default:
             printf("x = %d\n", M->type);
             assert(0);
