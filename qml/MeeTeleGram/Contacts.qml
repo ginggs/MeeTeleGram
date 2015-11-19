@@ -8,6 +8,14 @@ Page {
         id: contacts_model
     }
 
+    BusyIndicator {
+        id: spinner
+        platformStyle: BusyIndicatorStyle { size: "large" }
+        anchors.centerIn: parent
+        running: !contacts_model.ready
+        visible: running
+    }
+
     Component {
         id: contact_msg_delegate
         Item {

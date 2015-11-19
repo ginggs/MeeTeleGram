@@ -4,6 +4,8 @@ import com.nokia.meego 1.0
 Item {
     default property alias model: contacts_model
 
+    property bool ready: false
+
     ListModel {
         id: contacts_model
     }
@@ -15,6 +17,7 @@ Item {
             contacts_model.clear()
             for (var i = 0; i < contacts.length; ++i)
                 contacts_model.append({"name": contacts[i]})
+            ready = true
         }
     }
 }
