@@ -12,10 +12,18 @@ Page {
         id: contact_msg_delegate
         Item {
             width: parent.width; height: 80
+
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                Text { text: '<b>' + name  + '</b>'}
+                anchors.fill: parent
+
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    wrapMode: Text.Wrap
+                    text: name
+                    font.bold: true
+                }
             }
         }
     }
