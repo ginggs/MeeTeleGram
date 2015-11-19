@@ -18,19 +18,97 @@ Page {
 
     Component {
         id: contact_msg_delegate
-        Item {
-            width: parent.width; height: 80
 
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.fill: parent
+        Item {
+            id: listItem
+            width: parent.width
+            height: 80
+
+            BorderImage {
+                id: background
+
+                anchors {
+                    fill: parent
+                    leftMargin: -contacts_page.anchors.leftMargin
+                    rightMargin: -contacts_page.anchors.rightMargin
+                }
+
+                visible: mouseArea.pressed
+                source: "image://theme/meegotouch-list-inverted-background-pressed-center"
+            }
+
+            Image {
+                id: contactImage
+                height: 60
+                width: 60
+                source: "image://theme/meegotouch-avatar-placeholder-background"
+
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    leftMargin: UiConstants.DefaultMargin
+                }
+
+                smooth: true
+
+                Image {
+                    id: contactPic
+                    anchors.fill: parent
+                    source: avatar.imageUrl
+
+                    onStatusChanged: if (status === Image.Error)
+                                         contactPic.source = ""
+                }
 
                 Text {
-                    anchors.fill: parent
-                    verticalAlignment: Text.AlignVCenter
-                    wrapMode: Text.Wrap
-                    text: name
-                    font.bold: true
+                    id: tagName
+                    anchors.centerIn: parent
+                    color: "white"
+                    font { bold: true; pixelSize: 32 }
+                    opacity: (contactPic.source == "") ? 1.0 : 0.0
+                    text: name[0].toUpperCase()
+                }
+            }
+
+            Image {
+                id: maskedImage
+                height: 60
+                width: 60
+                source: "image://theme/meegotouch-avatar-mask-small"
+
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    leftMargin: UiConstants.DefaultMargin
+                }
+
+                smooth: true
+                opacity: 0.0
+            }
+
+            Label {
+                id: contactName
+                width: parent.width - (contactPic.width + UiConstants.DefaultMargin + 20)
+                anchors {
+                    left: contactImage.right
+                    leftMargin: 20
+                    verticalCenter: parent.verticalCenter
+                    rightMargin: UiConstants.DefaultMargin
+                }
+
+                font: UiConstants.TitleFont
+                wrapMode: Text.Wrap
+                elide: Text.ElideRight
+                color: "black"
+                text: name
+                maximumLineCount: 1
+            }
+
+            MouseArea {
+                id: mouseArea
+                anchors.fill: background
+                onClicked: {
+                    console.log("Contact clicked: " + name)
                 }
             }
         }
