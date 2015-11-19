@@ -58,6 +58,7 @@ struct connection: public QObject
         QTcpSocket socket;
         mtproto_methods *methods;
         QByteArray read_buffer;
+        QByteArray write_buffer;
         int server_port;
 
     private slots:
@@ -99,6 +100,7 @@ struct connection: public QObject
         qint64 available_bytes();
         void try_rpc_read();
         int read_lookup(void *data, int len);
+        void send_buffered_data();
 };
 
 connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
@@ -142,19 +144,28 @@ int connection::write(const void *data, int len)
 {
     // buffer data & write
     const char *data_bytes = reinterpret_cast<const char *>(data);
-    qint64 n = socket.write(data_bytes, len);
-    if (n == -1)
-        qDebug() << "Network write error: " << socket.errorString();
-    if (n != len)
+    if (socket.state() != QAbstractSocket::ConnectedState
+            || !write_buffer.isEmpty())
     {
-        qDebug() << n << '/' << len << " bytes written, wait to write more data...";
-//        while (!socket.waitForBytesWritten())
-//            qDebug() << "Not written yet! waiting more...";
-//        qint64 r =  socket.write(data_bytes + n, len - n);
-//        assert(r >= 0);
-//        n += r;
+        qDebug() << "Not connected yet, adding " << len << " bytes to internal "
+                "write buffer (size: " << write_buffer.length() << ")";
+        write_buffer.append(data_bytes, len);
     }
-    return n;
+    else
+    {
+        qint64 n = socket.write(data_bytes, len);
+        if (n == -1)
+        {
+            qDebug() << "Network write error: " << socket.errorString();
+            n = 0;
+        }
+        if (n < len)
+            write_buffer.append(data_bytes + n, len - n);
+        qDebug() << "Queue " << n << " bytes for sending, adding remaining "
+                << len - n << " bytes to internal write buffer (size: "
+                << write_buffer.length() << ")";
+    }
+    return len;
 }
 
 int connection::read(void *data, int len)
@@ -217,6 +228,8 @@ void connection::state_changed(QAbstractSocket::SocketState socketState)
 {
     qDebug(__PRETTY_FUNCTION__);
     qDebug() << "New sate: " << socketState;
+    if (socketState == QAbstractSocket::ConnectedState)
+        send_buffered_data();
 }
 
 void connection::about_to_close()
@@ -227,7 +240,8 @@ void connection::about_to_close()
 
 void connection::bytes_written(qint64 bytes)
 {
-    // write remaining data?!
+    qDebug() << bytes << " byte(s) sent.";
+    send_buffered_data();
 }
 
 void connection::read_channel_finished()
@@ -312,6 +326,25 @@ int connection::read_lookup(void *data, int len)
     }
     memcpy(data, read_buffer.constData(), len);
     return len;
+}
+
+void connection::send_buffered_data()
+{
+    if (write_buffer.isEmpty())
+        return;
+
+    qint64 n = socket.write(write_buffer.constData(), write_buffer.length());
+    if (n == -1)
+    {
+        qDebug() << "Network write error: " << socket.errorString();
+        return;
+    }
+    if (n == write_buffer.length())
+        write_buffer.clear();
+    else
+        write_buffer.remove(0, n);
+    qDebug() << "Queue " << n << " bytes from internal write buffer, "
+            << write_buffer.length() << " bytes remain.";
 }
 
 static connection *create_connection(tgl_state *tls, const char *host, int port,
