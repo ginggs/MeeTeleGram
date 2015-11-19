@@ -70,10 +70,15 @@ Page {
                     pageStack.push(locationWindow)
                 }
             }*/
-            MenuItem { text: qsTr("About")
+            MenuItem {
+                text: qsTr("About")
                 onClicked: {
                     aboutDialog.open()
                 }
+            }
+            MenuItem {
+                text: qsTr("Quit")
+                onClicked: Qt.quit()
             }
         }
     }
