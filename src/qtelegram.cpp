@@ -538,6 +538,7 @@ void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     {
         user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
     }
+    user_names.sort();
     qDebug() << user_names;
 
     if (!success)
