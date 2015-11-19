@@ -4,10 +4,10 @@ import com.nokia.meego 1.0
 PageStackWindow {
     id: mainwindow
 
-    initialPage: mainPage
+    initialPage: main_page
 
     MainPage {
-        id: mainPage
+        id: main_page
     }
 
     Component.onCompleted: {
@@ -37,10 +37,6 @@ PageStackWindow {
         onLogged_in: {
             console.log("Logged in!")
             telegram.request_contact_list()
-        }
-        onContact_list_received: {
-            console.log("Contact list received: num = " + contacts.length)
-            mainPage.set_contacts(contacts)
         }
         onPhone_number_requested: {
             console.log("ask phone num")

@@ -59,4 +59,4 @@ LIBS += -L $$PWD/tgl/build/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
 include(src/src.pri)
 
 DISTFILES += \
-    qml/MeeTeleGram/MainPage.qml
+    qml/*
