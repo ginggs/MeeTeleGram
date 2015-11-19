@@ -56,16 +56,17 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     QScopedPointer<QApplication> app(createApplication(argc, argv));
 
-    QString locale = QLocale::system().name();
+    QLocale locale; // system locale
 
     QTranslator translator;
-    if (translator.load("MeeTeleGram."+locale, "l10n/"))
+    if (translator.load("MeeTeleGram." + locale.name(), "l10n/"))
         app->installTranslator(&translator);
 
     QTranslator qtTranslator;
-    qtTranslator.load("qt_" + QLocale::system().name(),
+    qtTranslator.load("qt_" + locale.name(),
             QLibraryInfo::location(QLibraryInfo::TranslationsPath));
     app->installTranslator(&qtTranslator);
+    app->setLayoutDirection(locale.textDirection());
 
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");

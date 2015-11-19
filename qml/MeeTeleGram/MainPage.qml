@@ -24,6 +24,10 @@ Page {
     ToolBarLayout {
         id: common_tools
         visible: true
+
+        LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
+        LayoutMirroring.childrenInherit: true
+
         ToolIcon {
             iconId: "toolbar-view-menu"
             anchors.right: (parent === undefined) ? undefined : parent.right

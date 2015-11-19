@@ -14,6 +14,7 @@ Page {
             width: parent.width; height: 80
             Column {
                 anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
                 Text { text: '<b>' + name  + '</b>'}
             }
         }
