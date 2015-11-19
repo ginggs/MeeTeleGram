@@ -141,8 +141,19 @@ void connection::connect_to_server(const char *host, int port)
 int connection::write(const void *data, int len)
 {
     // buffer data & write
-    qint64 n = socket.write(reinterpret_cast<const char *>(data), len);
-    assert(n==len);
+    const char *data_bytes = reinterpret_cast<const char *>(data);
+    qint64 n = socket.write(data_bytes, len);
+    if (n == -1)
+        qDebug() << "Network write error: " << socket.errorString();
+    if (n != len)
+    {
+        qDebug() << n << '/' << len << " bytes written, wait to write more data...";
+//        while (!socket.waitForBytesWritten())
+//            qDebug() << "Not written yet! waiting more...";
+//        qint64 r =  socket.write(data_bytes + n, len - n);
+//        assert(r >= 0);
+//        n += r;
+    }
     return n;
 }
 
