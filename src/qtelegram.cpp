@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <QTimerEvent>
+#include <QDebug>
 
 #include <tgl.h>
 #include <tgl-binlog.h>
@@ -492,22 +493,58 @@ void qtelegram::timerEvent(QTimerEvent* event)
     }
 }
 
-void print_user_name(tgl_peer_id_t id, tgl_peer_t *U);
+QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
+{
+    QString name;
+    if (!U)
+    {
+        name = QString("user#%1").arg(tgl_get_peer_id(id));
+        // todo add tgl_get_peer_id(id) to unknown user list (to retrieve info)
+        // using tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
+    }
+    else
+    {
+        if ((U->flags & TGLUF_DELETED))
+            name = QString("user#%1 [deleted]").arg(tgl_get_peer_id(id));
+        else if (!(U->flags & TGLUF_CREATED))
+            name = QString("user#%1").arg(tgl_get_peer_id(id));
+        else
+        {
+            if (!U->user.first_name || !strlen(U->user.first_name))
+                name = QString::fromUtf8(U->user.last_name);
+            else if (!U->user.last_name || !strlen(U->user.last_name))
+                name = QString::fromUtf8(U->user.first_name);
+            else
+            {
+                QString fn = QString::fromUtf8(U->user.first_name);
+                QString ln = QString::fromUtf8(U->user.last_name);
+                name = fn + ' ' + ln;
+            }
+        }
+        if (!(U->flags & TGLUF_CONTACT))
+            name = "[non-contact] " + name;
+    }
+    return name;
+}
 
 void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     int success, int size, tgl_user *contacts[])
 {
     qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
 
+    QStringList user_names;
     printf("Contact list received: ");
     for (int i = size - 1; i >= 0; i--)
     {
-        print_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
-        printf("\n");
+        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
     }
+    qDebug() << user_names;
 
     if (!success)
         emit qtg->error(tls->error_code, tls->error);
     else
+    {
+        emit qtg->contact_list_received(user_names);
         emit qtg->contact_list_received(contacts, size);
+    }
 }

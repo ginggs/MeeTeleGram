@@ -39,7 +39,8 @@ PageStackWindow {
             telegram.request_contact_list()
         }
         onContact_list_received: {
-            console.log("Contact list received: num = " + size)
+            console.log("Contact list received: num = " + contacts.length)
+            mainPage.set_contacts(contacts)
         }
         onPhone_number_requested: {
             console.log("ask phone num")

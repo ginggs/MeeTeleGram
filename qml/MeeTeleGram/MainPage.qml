@@ -5,6 +5,13 @@ import com.nokia.meego 1.0
 Page {
     signal showAbout
 
+    function set_contacts(contacts)
+    {
+        contacts_model.clear()
+        for (var i = 0; i < contacts.length; ++i)
+            contacts_model.append({"name": contacts[i]})
+    }
+
     tools: commonTools
     anchors.margins: 10
 
@@ -18,6 +25,25 @@ Page {
         // sample signal connection: mainPage.addLocation.connect(locationWindow.addLocation)
     }
 
+    ListModel {
+        id: contacts_model
+    }
+
+    Component {
+        id: contact_msg_delegate
+        Item {
+            width: parent.width; height: 80
+            Column {
+                Text { text: '<b>' + name  + '</b>'}
+            }
+        }
+    }
+
+    ListView {
+        anchors.fill: parent
+        model: contacts_model
+        delegate: contact_msg_delegate
+    }
 
     ToolBarLayout {
         id: commonTools

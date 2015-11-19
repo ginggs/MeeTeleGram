@@ -10,6 +10,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <tgl.h>
 
 /**
@@ -44,6 +45,7 @@ class qtelegram: public QObject
         void error(int error_code, const char *error);
         void logged_in();
         void contact_list_received(tgl_user *contacts[], int size);
+        void contact_list_received(QStringList contacts);
         void phone_number_requested();
         void code_requested();
         void current_pass_requested();
