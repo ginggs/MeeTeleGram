@@ -54,7 +54,7 @@ Page {
                 Image {
                     id: contactPic
                     anchors.fill: parent
-                    source: avatar.imageUrl
+                    source: avatar
 
                     onStatusChanged: if (status === Image.Error)
                                          contactPic.source = ""

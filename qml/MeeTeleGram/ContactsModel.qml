@@ -16,7 +16,7 @@ Item {
             console.log("Contact list received: num = " + contacts.length)
             contacts_model.clear()
             for (var i = 0; i < contacts.length; ++i)
-                contacts_model.append({"name": contacts[i]})
+                contacts_model.append({"name": contacts[i], "avatar": ""})
             ready = true
         }
     }
