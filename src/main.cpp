@@ -59,7 +59,7 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     QString locale = QLocale::system().name();
 
     QTranslator translator;
-    if (translator.load("meetelegram_"+locale, "l10n/"))
+    if (translator.load("MeeTeleGram."+locale, "l10n/"))
         app->installTranslator(&translator);
 
     QTranslator qtTranslator;

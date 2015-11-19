@@ -1,9 +1,10 @@
 QT += network
 
 # Add more folders to ship with the application, here
-folder_01.source = qml/MeeTeleGram
-folder_01.target = qml
-DEPLOYMENTFOLDERS = folder_01
+qmldir.source = qml/MeeTeleGram
+qmldir.target = qml
+l10ndir.source = l10n
+DEPLOYMENTFOLDERS = qmldir l10ndir
 
 # Additional import path used to resolve QML modules in Creator's code model
 QML_IMPORT_PATH =
@@ -56,7 +57,15 @@ INSTALLS += splash server_pubkey
 INCLUDEPATH += tgl/ tgl/build
 LIBS += -L $$PWD/tgl/build/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
 
+lupdate_only {
+SOURCES += qml/MeeTeleGram/*
+}
+
+TRANSLATIONS += l10n/MeeTeleGram.fa.ts
+
 include(src/src.pri)
 
 DISTFILES += \
     qml/*
+
+include(updateqm.pri)

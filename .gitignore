@@ -3,3 +3,4 @@ tgl
 *.pro.user
 AUTH_FILE*
 STATE_FILE
+*.qm
