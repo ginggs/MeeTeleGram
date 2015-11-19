@@ -15,9 +15,15 @@ Page {
 
     TabGroup {
         anchors.fill: parent
-        currentTab: tab1
+        currentTab: contacts_tab
         Contacts {
-            id: tab1
+            id: contacts_tab
+        }
+        Page {
+            id: messages_tab
+            Label {
+                text: "HIIIIIIII"
+            }
         }
     }
 
@@ -29,20 +35,28 @@ Page {
         LayoutMirroring.childrenInherit: true
 
         ToolIcon {
+            anchors.left: parent.left
+            iconId: "toolbar-refresh"
+        }
+        ButtonRow {
+            TabButton {
+                tab: contacts_tab
+                iconSource: "image://theme/icon-m-toolbar-addressbook"
+                            + (theme.inverted ? "-white" : "")
+            }
+
+            TabButton {
+                tab: messages_tab
+                iconSource: "image://theme/icon-m-toolbar-new-chat"
+                            + (theme.inverted ? "-white" : "")
+            }
+        }
+        ToolIcon {
             iconId: "toolbar-view-menu"
-            anchors.right: (parent === undefined) ? undefined : parent.right
+            anchors.right: parent.right
             onClicked: (myMenu.status === DialogStatus.Closed) ? myMenu.open()
                                                                : myMenu.close()
         }
-    //        ToolIcon {
-    //            iconId: "toolbar-grid"
-    ////            platformIconId: "toolbar-grid"
-    ////            anchors.right: menutool.left
-    ////            onClicked: (myMenu.status === DialogStatus.Closed) ? myMenu.open() : myMenu.close()
-    //        }
-    //        ToolIcon {
-    //            iconId: "toolbar-list"
-    //        }
     }
 
     QueryDialog {
