@@ -27,6 +27,11 @@
 #include <QDesktopServices>
 
 #define APP_NAME "MeeTeleGram"
+/*
+ * Please note that each telegram client should have its own APP_HASH/APP_ID. So, if you
+ * used this source in your own client/fork, please receive your own hash/id from telegram
+ * website. Thanks!
+ */
 #define MEETELEGRAM_APP_HASH "923618563c7c9e07496c4aebb6924bfb"
 #define MEETELEGRAM_APP_ID 44097
 #define MEETELEGRAM_VERSION "0.0.0"
