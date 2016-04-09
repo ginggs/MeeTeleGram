@@ -1,4 +1,3 @@
-tgl
 *.o
 *.pro.user
 AUTH_FILE*
