@@ -44,6 +44,7 @@ class qtelegram: public QObject
     signals:
         void error(int error_code, const char *error);
         void logged_in();
+        void login_failed(int error_code, const char *error);
         void contact_list_received(tgl_user *contacts[], int size);
         void contact_list_received(QStringList contacts);
         void phone_number_requested();
@@ -96,14 +97,16 @@ class qtelegram: public QObject
         static void chat_update_gw(tgl_state *tls, tgl_chat *U, unsigned flags);
         static void secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
             unsigned flags);
-        static void our_id_gw(tgl_state *tls, int id);
+        static void channel_update_gw(tgl_state *tls, struct tgl_channel *U,
+            unsigned flags);
+        static void our_id_gw(tgl_state *tls, tgl_peer_id_t id);
         static void user_status_upd(tgl_state *tls, tgl_user *U);
         static void get_values(tgl_state *tls, tgl_value_type type,
             const char *prompt, int num_values, getvalues_callback callback,
             void *arg);
-
         static void on_contact_list_updated(tgl_state *tls,
             void *qtptr, int success, int size, tgl_user *contacts[]);
+        static void on_failed_login(struct tgl_state *tls);
 };
 
 #endif /* QTELEGRAM_H_ */

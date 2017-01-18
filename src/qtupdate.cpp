@@ -12,6 +12,7 @@
 //#include <sys/types.h>
 //#include <sys/stat.h>
 #include <fcntl.h>
+#include <QDebug>
 #include <QObject>
 #include <QInputDialog>
 #include <tgl.h>
@@ -38,6 +39,7 @@ tgl_update_callback qtelegram::qtg_update_cb =
     //void (*new_authorization)(tgl_state *tls, const char *device, const char *location);
     0,
     chat_update_gw,
+    channel_update_gw,
     user_update_gw,
     secret_chat_update_gw,
     print_message_gw, // msg_receive
@@ -46,7 +48,8 @@ tgl_update_callback qtelegram::qtg_update_cb =
     0,
     user_status_upd,
     //char *(*create_print_name) (tgl_state *tls, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
-    0
+    0,
+    on_failed_login
 };
 
 static void print_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
@@ -188,7 +191,7 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
         case tgl_message_action_chat_delete_photo:
             printf(" deleted photo\n");
             break;
-        case tgl_message_action_chat_add_user:
+        case tgl_message_action_chat_add_users:
             printf(" added user ");
             print_user_name(tgl_set_peer_id(TGL_PEER_USER, M->action.user),
                 tgl_peer_get(tls,
@@ -537,8 +540,7 @@ static void print_message(tgl_state *tls, tgl_message *M)
         print_chat_name(M->to_id, tgl_peer_get(tls, M->to_id));
         printf(" ");
         print_user_name(M->from_id, tgl_peer_get(tls, M->from_id));
-        if ((tgl_get_peer_type(M->from_id) == TGL_PEER_USER)
-                && (tgl_get_peer_id(M->from_id) == tls->our_id))
+        if (!tgl_cmp_peer_id(M->from_id, tls->our_id))
             printf("MINE?");
     }
     if (M->flags & TGLMF_OUT)
@@ -608,8 +610,7 @@ static void print_read_list(tgl_state *TLS, int num, tgl_message *list[])
         if (list[i])
         {
             tgl_peer_id_t to_id;
-            if (tgl_get_peer_type(list[i]->to_id) == TGL_PEER_USER
-                    && tgl_get_peer_id(list[i]->to_id) == TLS->our_id)
+            if (!tgl_cmp_peer_id(list[i]->to_id, TLS->our_id))
             {
                 to_id = list[i]->from_id;
             }
@@ -624,8 +625,7 @@ static void print_read_list(tgl_state *TLS, int num, tgl_message *list[])
                 if (list[j])
                 {
                     tgl_peer_id_t end_id;
-                    if (tgl_get_peer_type(list[j]->to_id) == TGL_PEER_USER
-                            && tgl_get_peer_id(list[j]->to_id) == TLS->our_id)
+                    if (!tgl_cmp_peer_id (list[j]->to_id, TLS->our_id))
                     {
                         end_id = list[j]->from_id;
                     }
@@ -800,6 +800,9 @@ void qtelegram::user_update_gw(tgl_state *tls, tgl_user *U, unsigned flags)
     qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
 
+    printf("User Username: %s %s\n", U->print_name, U->username);
+//    peer_update_username ((void *)U, U->username);
+
     if (!qtg->enable_events)
     {
         qDebug("binlog not read!");
@@ -888,7 +891,16 @@ void qtelegram::secret_chat_update_gw(tgl_state *tls, tgl_secret_chat *U,
     }
 }
 
-void qtelegram::our_id_gw(tgl_state *tls, int id)
+void qtelegram::channel_update_gw(tgl_state *tls, struct tgl_channel *U,
+    unsigned flags)
+{
+    qDebug(__PRETTY_FUNCTION__);
+
+    printf("Channel Username: %s %s\n", U->print_title, U->username);
+//    peer_update_username ((void *)U, U->username);
+}
+
+void qtelegram::our_id_gw(tgl_state *tls, tgl_peer_id_t id)
 {
     qDebug(__PRETTY_FUNCTION__);
 }
@@ -1003,4 +1015,69 @@ void qtelegram::get_values(tgl_state *tls, tgl_value_type type,
             qDebug("Unknown data requested!");
             return;
     }
+}
+
+QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
+{
+    QString name;
+    if (!U)
+    {
+        name = QString("user#%1").arg(tgl_get_peer_id(id));
+        // todo add tgl_get_peer_id(id) to unknown user list (to retrieve info)
+        // using tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
+    }
+    else
+    {
+        if ((U->flags & TGLUF_DELETED))
+            name = QString("user#%1 [deleted]").arg(tgl_get_peer_id(id));
+        else if (!(U->flags & TGLUF_CREATED))
+            name = QString("user#%1").arg(tgl_get_peer_id(id));
+        else
+        {
+            if (!U->user.first_name || !strlen(U->user.first_name))
+                name = QString::fromUtf8(U->user.last_name);
+            else if (!U->user.last_name || !strlen(U->user.last_name))
+                name = QString::fromUtf8(U->user.first_name);
+            else
+            {
+                QString fn = QString::fromUtf8(U->user.first_name);
+                QString ln = QString::fromUtf8(U->user.last_name);
+                name = fn + ' ' + ln;
+            }
+        }
+        if (!(U->flags & TGLUF_CONTACT))
+            name = "[non-contact] " + name;
+    }
+    return name;
+}
+
+void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
+    int success, int size, tgl_user *contacts[])
+{
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
+
+    QStringList user_names;
+    printf("Contact list received: ");
+    for (int i = size - 1; i >= 0; i--)
+    {
+        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
+    }
+    user_names.sort();
+    qDebug() << user_names;
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+    else
+    {
+        emit qtg->contact_list_received(user_names);
+        emit qtg->contact_list_received(contacts, size);
+    }
+}
+
+void qtelegram::on_failed_login(struct tgl_state *tls)
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    printf("Login failed: %d (%s)\n", tls->error_code, tls->error);
+    emit qtg->login_failed(tls->error_code, tls->error);
 }

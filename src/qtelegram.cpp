@@ -15,7 +15,7 @@
 
 #include <tgl.h>
 #include <tgl-binlog.h>
-
+#include <tgl-queries.h>
 
 #define TELEGRAM_N9_TEST_SERVER "149.154.167.40"
 #define TELEGRAM_N9_PROD_SERVER "149.154.167.50"
@@ -42,7 +42,7 @@ qtelegram::qtelegram(int app_id, const char *app_hash, const char *app_ver,
     tgl_allocator = &tgl_allocator_release;
     tgl_set_binlog_mode (tlstate, 0);
 
-    tgl_set_verbosity(tlstate, 5);
+    tgl_set_verbosity(tlstate, 7);
 //    tgl_set_test_mode(tlstate); // todo(test_code) remove for production
 
     tgl_set_rsa_key(tlstate, "tg-server.pub");
@@ -183,7 +183,7 @@ void qtelegram::read_auth_file()
     }
     if (our_id)
     {
-        bl_do_set_our_id(tlstate, our_id);
+        bl_do_set_our_id(tlstate, TGL_MK_USER(our_id));
     }
     close(auth_file_fd);
 }
@@ -209,7 +209,7 @@ void qtelegram::empty_auth_file()
     qDebug(__PRETTY_FUNCTION__);
     if (tlstate->test_mode)
     {
-        bl_do_dc_option(tlstate, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_TEST_SERVER,
+        bl_do_dc_option(tlstate, 0, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_TEST_SERVER,
             strlen(TELEGRAM_N9_TEST_SERVER), 443);
         bl_do_set_working_dc(tlstate, 0);
 //        bl_do_dc_option(tlstate, 1, "", 0, TG_SERVER_TEST_1,
@@ -222,7 +222,7 @@ void qtelegram::empty_auth_file()
     }
     else
     {
-        bl_do_dc_option(tlstate, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_PROD_SERVER,
+        bl_do_dc_option(tlstate, 0, TGL_DC_AUTO_ID, "default", strlen("default"), TELEGRAM_N9_PROD_SERVER,
             strlen(TELEGRAM_N9_PROD_SERVER), 443);
         bl_do_set_working_dc(tlstate, 0);
 //        bl_do_dc_option(tlstate, 1, "", 0, TG_SERVER_1, strlen(TG_SERVER_1), 443);
@@ -252,7 +252,7 @@ void qtelegram::read_dc(int auth_file_fd, int id, unsigned ver)
     assert(read(auth_file_fd, auth_key, 256) == 256);
 
     //bl_do_add_dc (id, ip, l, port, auth_key_id, auth_key);
-    bl_do_dc_option(tlstate, id, "DC", 2, ip, l, port);
+    bl_do_dc_option(tlstate, 0, id, "DC", 2, ip, l, port);
     bl_do_set_auth_key(tlstate, id, auth_key);
     bl_do_dc_signed(tlstate, id);
 }
@@ -490,62 +490,5 @@ void qtelegram::timerEvent(QTimerEvent* event)
     {
         qDebug("* hourly state lookup *");
         tgl_do_lookup_state(tlstate);
-    }
-}
-
-QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
-{
-    QString name;
-    if (!U)
-    {
-        name = QString("user#%1").arg(tgl_get_peer_id(id));
-        // todo add tgl_get_peer_id(id) to unknown user list (to retrieve info)
-        // using tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
-    }
-    else
-    {
-        if ((U->flags & TGLUF_DELETED))
-            name = QString("user#%1 [deleted]").arg(tgl_get_peer_id(id));
-        else if (!(U->flags & TGLUF_CREATED))
-            name = QString("user#%1").arg(tgl_get_peer_id(id));
-        else
-        {
-            if (!U->user.first_name || !strlen(U->user.first_name))
-                name = QString::fromUtf8(U->user.last_name);
-            else if (!U->user.last_name || !strlen(U->user.last_name))
-                name = QString::fromUtf8(U->user.first_name);
-            else
-            {
-                QString fn = QString::fromUtf8(U->user.first_name);
-                QString ln = QString::fromUtf8(U->user.last_name);
-                name = fn + ' ' + ln;
-            }
-        }
-        if (!(U->flags & TGLUF_CONTACT))
-            name = "[non-contact] " + name;
-    }
-    return name;
-}
-
-void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
-    int success, int size, tgl_user *contacts[])
-{
-    qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
-
-    QStringList user_names;
-    printf("Contact list received: ");
-    for (int i = size - 1; i >= 0; i--)
-    {
-        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
-    }
-    user_names.sort();
-    qDebug() << user_names;
-
-    if (!success)
-        emit qtg->error(tls->error_code, tls->error);
-    else
-    {
-        emit qtg->contact_list_received(user_names);
-        emit qtg->contact_list_received(contacts, size);
     }
 }
