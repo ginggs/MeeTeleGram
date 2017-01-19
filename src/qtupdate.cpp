@@ -965,6 +965,7 @@ void qtelegram::user_status_upd(tgl_state *tls, tgl_user *U)
 void qtelegram::get_values(tgl_state *tls, tgl_value_type type,
     const char *prompt, int /*num_values*/, getvalues_callback callback, void *arg)
 {
+    qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
 
     assert(qtg->getvalues_cb == NULL);
@@ -1054,6 +1055,7 @@ QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
 void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     int success, int size, tgl_user *contacts[])
 {
+    qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
 
     QStringList user_names;
