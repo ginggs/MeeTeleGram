@@ -3,3 +3,5 @@
 AUTH_FILE*
 STATE_FILE
 *.qm
+icons/
+.settings/org.eclipse.cdt.codan.core.prefs
