@@ -10,6 +10,7 @@
 #include <cassert>
 #include <unistd.h>
 #include <fcntl.h>
+#include <QDateTime>
 #include <QTimerEvent>
 #include <QDebug>
 #include <QVariantMap>
@@ -529,10 +530,15 @@ QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
                 name = fn + ' ' + ln;
             }
         }
-        if (!(U->flags & TGLUF_CONTACT))
-            name = "[non-contact] " + name;
+//        if (!(U->flags & TGLUF_CONTACT))
+//            name = "[non-contact] " + name;
     }
     return name;
+}
+
+bool is_contact(tgl_peer_t *U)
+{
+    return U && (U->flags & TGLUF_CONTACT);
 }
 
 QString get_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
@@ -618,11 +624,16 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         }
         dlg.insert("unread", unread_count[i]);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
-        if (msg->message && strlen(msg->message))
-            dlg.insert("message", msg->message);
-        else if (msg->media.type != tgl_message_media_none)
-            dlg.insert("message", "[media]");
-//            print_media(&M->media);
+        if (msg)
+        {
+            if (msg->message && strlen(msg->message))
+                dlg.insert("message", msg->message);
+            else if (msg->media.type != tgl_message_media_none)
+                dlg.insert("message", "[media]");
+    //            print_media(&M->media);
+            dlg.insert("message_date", QDateTime::fromTime_t(msg->date));
+        }
+        dlg.insert("is_contact", is_contact(UC));
 
         emit qtg->dialog_received(dlg);
     }

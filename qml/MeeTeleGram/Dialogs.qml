@@ -92,7 +92,8 @@ Page {
                 anchors {
                     left: contactImage.right
                     leftMargin: 20
-                    verticalCenter: parent.verticalCenter
+                    top: parent.top
+                    topMargin: UiConstants.DefaultMargin
                     rightMargin: UiConstants.DefaultMargin
                 }
 
@@ -101,6 +102,44 @@ Page {
                 elide: Text.ElideRight
                 color: "black"
                 text: name + "(" + unread + ")"
+                maximumLineCount: 1
+            }
+
+            Label {
+                id: lastMsg
+                width: parent.width - (contactPic.width + UiConstants.DefaultMargin + 20)
+                anchors {
+                    left: contactImage.right
+                    leftMargin: 20
+                    top: contactName.bottom
+                    topMargin: UiConstants.DefaultMargin
+                    rightMargin: UiConstants.DefaultMargin
+                }
+
+                font: UiConstants.BodyTextFont
+                wrapMode: Text.Wrap
+                elide: Text.ElideRight
+                color: "black"
+                text: message
+                maximumLineCount: 1
+            }
+
+            Label {
+                id: msgDate
+                width: parent.width - (contactPic.width + UiConstants.DefaultMargin + 20)
+                anchors {
+                    left: contactImage.right
+                    leftMargin: 20
+                    top: lastMsg.bottom
+                    topMargin: UiConstants.DefaultMargin
+                    rightMargin: UiConstants.DefaultMargin
+                }
+
+                font: UiConstants.SubtitleFont
+                wrapMode: Text.Wrap
+                elide: Text.ElideRight
+                color: "black"
+                text: message_date
                 maximumLineCount: 1
             }
 
