@@ -171,6 +171,8 @@ static void print_typing(tgl_typing_status status)
 
 static void print_service_message(tgl_state *tls, tgl_message *M)
 {
+    qDebug(__PRETTY_FUNCTION__);
+
     assert(M);
     // ?! can be shown M->id;
     // time_t M->date;
@@ -191,6 +193,7 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
       printf(" ");
       print_user_name(M->from_id, tgl_peer_get(tls, M->from_id));
     }
+    qDebug() << "MSG Action type: " << M->action.type;
 
     switch (M->action.type)
     {
@@ -288,6 +291,8 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
         case tgl_message_action_migrated_from:
             printf(" migrated from group '%s'\n", M->action.title);
             break;
+        default:
+            qDebug() << "Unknwon service msg action type: " << M->action.type;
     }
 }
 
@@ -539,9 +544,10 @@ static void print_message(tgl_state *tls, tgl_message *M)
     qDebug(__PRETTY_FUNCTION__);
     if (M->flags & (TGLMF_EMPTY | TGLMF_DELETED))
     {
+        qDebug("EMPTY OR DELETED!");
         return;
     }
-    if (!(M->flags & TGLMF_CREATED)) { return; }
+    if (!(M->flags & TGLMF_CREATED)) { qDebug("CREATED"); return; }
     if (M->flags & TGLMF_SERVICE)
     {
         print_service_message(tls, M);

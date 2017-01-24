@@ -610,27 +610,45 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         switch (tgl_get_peer_type(peers[i]))
         {
             case TGL_PEER_USER:
+                qDebug() << "User";
                 dlg.insert("type", "user");
                 dlg.insert("name", get_user_name(peers[i], UC));
                 break;
             case TGL_PEER_CHAT:
+                qDebug() << "Chat";
                 dlg.insert("type", "chat");
                 dlg.insert("name", get_chat_name(peers[i], UC));
                 break;
             case TGL_PEER_CHANNEL:
+                qDebug() << "Channel";
                 dlg.insert("type", "channel");
                 dlg.insert("name", get_channel_name(peers[i], UC));
                 break;
+            default:
+                qDebug() << "PEER TYPE: " << tgl_get_peer_type(peers[i]);
+                break;
         }
         dlg.insert("unread", unread_count[i]);
+        assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
         if (msg)
         {
-            if (msg->message && strlen(msg->message))
-                dlg.insert("message", msg->message);
-            else if (msg->media.type != tgl_message_media_none)
-                dlg.insert("message", "[media]");
-    //            print_media(&M->media);
+            qDebug() << "MSG FOUND";
+            print_message_gw(tls, msg);
+        }
+        if (msg)
+        {
+            if (!(msg->flags & (TGLMF_EMPTY | TGLMF_DELETED))
+                && (msg->flags & TGLMF_CREATED) && !(msg->flags & TGLMF_SERVICE))
+            {
+                qDebug() << "Adding message" ;
+//                dlg.insert("message", "folan");
+                if (msg->message && strlen(msg->message))
+                    dlg.insert("message", QString::fromUtf8(msg->message));
+                else if (msg->media.type != tgl_message_media_none)
+                    dlg.insert("message", "[media]");
+    //                print_media(&M->media);
+            }
             dlg.insert("message_date", QDateTime::fromTime_t(msg->date));
         }
         dlg.insert("is_contact", is_contact(UC));
