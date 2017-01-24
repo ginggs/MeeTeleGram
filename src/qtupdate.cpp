@@ -68,6 +68,24 @@ static void print_encr_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
         printf("%s", C->print_name);
 }
 
+static void print_channel_name(tgl_peer_id_t id, tgl_peer_t *C)
+{
+    assert(tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
+//    if (permanent_peer_id_mode)
+//    {
+//        print_peer_permanent_name(ev, id);
+//        return;
+//    }
+    if (!C /*|| use_ids*/)
+    {
+        printf("channel#%d", tgl_get_peer_id(id));
+    }
+    else
+    {
+        printf("%s", C->channel.title);
+    }
+}
+
 void print_user_name(tgl_peer_id_t id, tgl_peer_t *U)
 {
     if (!U)
@@ -160,12 +178,19 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
     {
         print_chat_name(M->to_id, tgl_peer_get(tls, M->to_id));
     }
+    else if (tgl_get_peer_type (M->to_id) == TGL_PEER_CHANNEL)
+    {
+        print_channel_name (M->to_id, tgl_peer_get (tls, M->to_id));
+    }
     else
     {
         assert(tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT);
         print_encr_chat_name(M->to_id, tgl_peer_get(tls, M->to_id));
     }
-    print_user_name(M->from_id, tgl_peer_get(tls, M->from_id));
+    if (tgl_get_peer_type (M->from_id) == TGL_PEER_USER) {
+      printf(" ");
+      print_user_name(M->from_id, tgl_peer_get(tls, M->from_id));
+    }
 
     switch (M->action.type)
     {
@@ -253,6 +278,15 @@ static void print_service_message(tgl_state *tls, tgl_message *M)
             break;
         case tgl_message_action_abort_key:
             printf(" abort rekey #%016llx\n", M->action.exchange_id);
+            break;
+        case tgl_message_action_channel_create:
+            printf(" created channel %s\n", M->action.title);
+            break;
+        case tgl_message_action_migrated_to:
+            printf(" migrated to channel\n");
+            break;
+        case tgl_message_action_migrated_from:
+            printf(" migrated from group '%s'\n", M->action.title);
             break;
     }
 }
@@ -534,14 +568,27 @@ static void print_message(tgl_state *tls, tgl_message *M)
         assert(P);
         printf(" %s", P->print_name);
     }
-    else
+    else if (tgl_get_peer_type (M->to_id) == TGL_PEER_CHAT)
     {
-        assert(tgl_get_peer_type (M->to_id) == TGL_PEER_CHAT);
         print_chat_name(M->to_id, tgl_peer_get(tls, M->to_id));
         printf(" ");
         print_user_name(M->from_id, tgl_peer_get(tls, M->from_id));
         if (!tgl_cmp_peer_id(M->from_id, tls->our_id))
             printf("MINE?");
+    } else {
+            assert (tgl_get_peer_type (M->to_id) == TGL_PEER_CHANNEL);
+
+//        print_msg_id (ev, M->permanent_id, M);
+//        mprintf (ev, " ");
+//        print_date (ev, M->date);
+//        mprintf (ev, " ");
+            print_channel_name (/*ev, */M->to_id, tgl_peer_get (tls, M->to_id));
+
+            if (tgl_get_peer_type (M->from_id) == TGL_PEER_USER)
+            {
+                printf (" ");
+                print_user_name (M->from_id, tgl_peer_get (tls, M->from_id));
+            }
     }
     if (M->flags & TGLMF_OUT)
     {
@@ -704,11 +751,8 @@ void qtelegram::on_login(tgl_state *tls)
 void qtelegram::on_started(tgl_state *tls)
 {
     qDebug(__PRETTY_FUNCTION__);
-//  if (wait_dialog_list) { // boolean, user option
-//    wait_dialog_list = 0;
-//    tgl_do_get_dialog_list (tls, 100, 0, dlist_cb, 0);
-//    return;
-//  }
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    emit qtg->started();
 }
 
 void qtelegram::type_notification_upd(tgl_state *tls, tgl_user *U,
@@ -1015,64 +1059,6 @@ void qtelegram::get_values(tgl_state *tls, tgl_value_type type,
         default:
             qDebug("Unknown data requested!");
             return;
-    }
-}
-
-QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
-{
-    QString name;
-    if (!U)
-    {
-        name = QString("user#%1").arg(tgl_get_peer_id(id));
-        // todo add tgl_get_peer_id(id) to unknown user list (to retrieve info)
-        // using tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
-    }
-    else
-    {
-        if ((U->flags & TGLUF_DELETED))
-            name = QString("user#%1 [deleted]").arg(tgl_get_peer_id(id));
-        else if (!(U->flags & TGLUF_CREATED))
-            name = QString("user#%1").arg(tgl_get_peer_id(id));
-        else
-        {
-            if (!U->user.first_name || !strlen(U->user.first_name))
-                name = QString::fromUtf8(U->user.last_name);
-            else if (!U->user.last_name || !strlen(U->user.last_name))
-                name = QString::fromUtf8(U->user.first_name);
-            else
-            {
-                QString fn = QString::fromUtf8(U->user.first_name);
-                QString ln = QString::fromUtf8(U->user.last_name);
-                name = fn + ' ' + ln;
-            }
-        }
-        if (!(U->flags & TGLUF_CONTACT))
-            name = "[non-contact] " + name;
-    }
-    return name;
-}
-
-void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
-    int success, int size, tgl_user *contacts[])
-{
-    qDebug(__PRETTY_FUNCTION__);
-    qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
-
-    QStringList user_names;
-    printf("Contact list received: ");
-    for (int i = size - 1; i >= 0; i--)
-    {
-        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
-    }
-    user_names.sort();
-    qDebug() << user_names;
-
-    if (!success)
-        emit qtg->error(tls->error_code, tls->error);
-    else
-    {
-        emit qtg->contact_list_received(user_names);
-        emit qtg->contact_list_received(contacts, size);
     }
 }
 

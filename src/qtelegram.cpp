@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <QTimerEvent>
 #include <QDebug>
+#include <QVariantMap>
 
 #include <tgl.h>
 #include <tgl-binlog.h>
@@ -97,6 +98,11 @@ void qtelegram::login()
 void qtelegram::request_contact_list()
 {
     tgl_do_update_contact_list(tlstate, on_contact_list_updated, this);
+}
+
+void qtelegram::get_dialog_list()
+{
+    tgl_do_get_dialog_list(tlstate, 100, 0, on_dialog_list_received, this);
 }
 
 void qtelegram::set_phone_number(QString number)
@@ -490,5 +496,134 @@ void qtelegram::timerEvent(QTimerEvent* event)
     {
         qDebug("* hourly state lookup *");
         tgl_do_lookup_state(tlstate);
+    }
+}
+
+//==============================================
+// function callbacks
+QString get_user_name(tgl_peer_id_t id, tgl_peer_t *U)
+{
+    QString name;
+    if (!U)
+    {
+        name = QString("user#%1").arg(tgl_get_peer_id(id));
+        // todo add tgl_get_peer_id(id) to unknown user list (to retrieve info)
+        // using tgl_do_get_user_info (TLS, TGL_MK_USER (unknown_user_list[i]), 0, 0, 0);
+    }
+    else
+    {
+        if ((U->flags & TGLUF_DELETED))
+            name = QString("user#%1 [deleted]").arg(tgl_get_peer_id(id));
+        else if (!(U->flags & TGLUF_CREATED))
+            name = QString("user#%1").arg(tgl_get_peer_id(id));
+        else
+        {
+            if (!U->user.first_name || !strlen(U->user.first_name))
+                name = QString::fromUtf8(U->user.last_name);
+            else if (!U->user.last_name || !strlen(U->user.last_name))
+                name = QString::fromUtf8(U->user.first_name);
+            else
+            {
+                QString fn = QString::fromUtf8(U->user.first_name);
+                QString ln = QString::fromUtf8(U->user.last_name);
+                name = fn + ' ' + ln;
+            }
+        }
+        if (!(U->flags & TGLUF_CONTACT))
+            name = "[non-contact] " + name;
+    }
+    return name;
+}
+
+QString get_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
+{
+    assert(tgl_get_peer_type (id) == TGL_PEER_CHAT);
+    if (!C)
+        return QString("chat#%1").arg(tgl_get_peer_id(id));
+    else
+        return QString::fromUtf8(C->chat.title);
+}
+
+QString get_channel_name(tgl_peer_id_t id, tgl_peer_t *C)
+{
+    assert(tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
+    if (!C)
+        return QString("channel#%1").arg(tgl_get_peer_id(id));
+    else
+        return QString::fromUtf8(C->channel.title);
+}
+
+QString get_encr_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
+{
+    assert(tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
+    if (!C)
+        return QString("encr_chat#%1").arg(tgl_get_peer_id(id));
+    else
+        return QString::fromUtf8(C->print_name);
+}
+
+
+void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
+    int success, int size, tgl_user *contacts[])
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
+
+    QStringList user_names;
+    printf("Contact list received: ");
+    for (int i = size - 1; i >= 0; i--)
+    {
+        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
+    }
+    user_names.sort();
+    qDebug() << user_names;
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+    else
+    {
+        emit qtg->contact_list_received(user_names);
+        emit qtg->contact_list_received(contacts, size);
+    }
+}
+
+void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
+    int success, int size, tgl_peer_id_t peers[],
+    tgl_message_id_t *last_msg_id[], int unread_count[])
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(extra);
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+
+    for (int i = 0; i < size; ++i)
+    {
+        tgl_peer_t *UC = tgl_peer_get(tls, peers[i]);
+        QVariantMap dlg;
+        switch (tgl_get_peer_type(peers[i]))
+        {
+            case TGL_PEER_USER:
+                dlg.insert("type", "user");
+                dlg.insert("name", get_user_name(peers[i], UC));
+                break;
+            case TGL_PEER_CHAT:
+                dlg.insert("type", "chat");
+                dlg.insert("name", get_chat_name(peers[i], UC));
+                break;
+            case TGL_PEER_CHANNEL:
+                dlg.insert("type", "channel");
+                dlg.insert("name", get_channel_name(peers[i], UC));
+                break;
+        }
+        dlg.insert("unread", unread_count[i]);
+        tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
+        if (msg->message && strlen(msg->message))
+            dlg.insert("message", msg->message);
+        else if (msg->media.type != tgl_message_media_none)
+            dlg.insert("message", "[media]");
+//            print_media(&M->media);
+
+        emit qtg->dialog_received(dlg);
     }
 }

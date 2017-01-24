@@ -19,11 +19,8 @@ Page {
         Contacts {
             id: contacts_tab
         }
-        Page {
+        Dialogs {
             id: messages_tab
-            Label {
-                text: "HIIIIIIII"
-            }
         }
     }
 

@@ -38,6 +38,10 @@ PageStackWindow {
             console.log("Logged in!")
             telegram.request_contact_list()
         }
+        onStarted: {
+            telegram.get_dialog_list()
+        }
+
         onPhone_number_requested: {
             console.log("ask phone num")
             register_sheet.open()

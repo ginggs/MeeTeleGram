@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 #include <tgl.h>
 
 /**
@@ -33,6 +34,7 @@ class qtelegram: public QObject
         Q_INVOKABLE void login();
 
         Q_INVOKABLE void request_contact_list();
+        Q_INVOKABLE void get_dialog_list();
 
         Q_INVOKABLE void set_phone_number(QString number);
         Q_INVOKABLE void set_code(QString code);
@@ -42,9 +44,10 @@ class qtelegram: public QObject
         Q_INVOKABLE void set_cur_and_new_password(QString curp, QString newp);
 
     signals:
-        void error(int error_code, const char *error);
+        void error(int error_code, QString error);
         void logged_in();
-        void login_failed(int error_code, const char *error);
+        void started();
+        void login_failed(int error_code, QString error);
         void contact_list_received(tgl_user *contacts[], int size);
         void contact_list_received(QStringList contacts);
         void phone_number_requested();
@@ -53,6 +56,8 @@ class qtelegram: public QObject
         void register_info_requested();
         void new_password_requested();
         void cur_and_new_password_requested();
+
+        void dialog_received(QVariantMap dialog);
 
     private:
         static tgl_update_callback qtg_update_cb;
@@ -84,6 +89,7 @@ class qtelegram: public QObject
 
         void timerEvent(QTimerEvent *event);
 
+        // main tgl callbacks
         static void print_message_gw(tgl_state *tls, tgl_message *m);
         static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[]);
         static void logprintf(const char *format, ...);
@@ -104,9 +110,14 @@ class qtelegram: public QObject
         static void get_values(tgl_state *tls, tgl_value_type type,
             const char *prompt, int num_values, getvalues_callback callback,
             void *arg);
+        static void on_failed_login(struct tgl_state *tls);
+
+        // function callbacks
         static void on_contact_list_updated(tgl_state *tls,
             void *qtptr, int success, int size, tgl_user *contacts[]);
-        static void on_failed_login(struct tgl_state *tls);
+        static void on_dialog_list_received(tgl_state *tls, void *extra,
+            int success, int size, tgl_peer_id_t peers[],
+            tgl_message_id_t *last_msg_id[], int unread_count[]);
 };
 
 #endif /* QTELEGRAM_H_ */
