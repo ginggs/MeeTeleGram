@@ -189,6 +189,6 @@ Page {
     }
 
     ScrollDecorator { flickableItem: dialogs_list }
-    SectionScroller { listView: dialogs_list }
+    FastScroll {listView: dialogs_list; alignment: Qt.AlignRight }
 }
 
