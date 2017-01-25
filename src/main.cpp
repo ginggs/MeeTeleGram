@@ -15,16 +15,19 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <QtGui/QApplication>
 #include <QtCore/QLocale>
 #include <QtCore/QTranslator>
 #include <QtCore/QDebug>
 #include <QtCore/QLibraryInfo>
+#include <QtDeclarative>
 #include <QDeclarativeContext>
+#include <QDesktopServices>
 #include "qmlapplicationviewer.h"
 #include "setting.h"
 #include "qtelegram.h"
-#include <QDesktopServices>
+#include "qpeerid.h"
 
 #define APP_NAME "MeeTeleGram"
 /*
@@ -76,6 +79,8 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");
     viewer.rootContext()->setContextProperty("settings", &settings);
+
+    qmlRegisterType<QPeerId>();
 
     QString confdir = QDesktopServices::storageLocation(
         QDesktopServices::DataLocation) + "/" APP_NAME "/";

@@ -19,6 +19,8 @@
 #include <tgl-binlog.h>
 #include <tgl-queries.h>
 
+#include "qpeerid.h"
+
 #define TELEGRAM_N9_TEST_SERVER "149.154.167.40"
 #define TELEGRAM_N9_PROD_SERVER "149.154.167.50"
 
@@ -628,6 +630,8 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
                 qDebug() << "PEER TYPE: " << tgl_get_peer_type(peers[i]);
                 break;
         }
+        QPeerId id(peers[i]);
+        dlg.insert("peer_id", QVariant::fromValue(id));
         dlg.insert("unread", unread_count[i]);
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
