@@ -155,7 +155,7 @@ Page {
         model: dialogs_model.model
         delegate: dialog_delegate
 //        section.property: "name"
-//        section.criteria: ViewSection.FirstCharacter
+//        section.criteria: ViewSection.FullString
 //        section.delegate: Item {
 //            id: textblock
 //            width: contact_list.width

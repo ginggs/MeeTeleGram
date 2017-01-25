@@ -28,7 +28,8 @@ Sheet {
                 anchors.fill: parent
 //                width: parent.width
                 spacing: 10
-                Text {
+                Label {
+                    id: code_label
                     text: qsTr("Code:")
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Text.AlignLeft
@@ -37,7 +38,9 @@ Sheet {
                 TextField {
                     id: input_code
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
+                    anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - parent.children[0].width - 20 - parent.spacing
+                    anchors.left: code_label.right
                 }
             }
 //        }
