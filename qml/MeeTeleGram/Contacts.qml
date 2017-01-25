@@ -60,7 +60,7 @@ Page {
                                          contactPic.source = ""
                 }
 
-                Text {
+                Label {
                     id: tagName
                     anchors.centerIn: parent
                     color: "white"

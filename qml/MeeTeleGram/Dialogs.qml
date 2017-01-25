@@ -60,7 +60,7 @@ Page {
                                          contactPic.source = ""
                 }
 
-                Text {
+                Label {
                     id: tagName
                     anchors.centerIn: parent
                     color: "white"
@@ -112,14 +112,12 @@ Page {
                     left: contactImage.right
                     leftMargin: 20
                     top: contactName.bottom
-                    topMargin: UiConstants.DefaultMargin
                     rightMargin: UiConstants.DefaultMargin
                 }
 
-                font: UiConstants.BodyTextFont
+                font.pixelSize: 16
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
-                color: "black"
                 text: message
                 maximumLineCount: 1
             }
@@ -131,14 +129,12 @@ Page {
                     left: contactImage.right
                     leftMargin: 20
                     top: lastMsg.bottom
-                    topMargin: UiConstants.DefaultMargin
                     rightMargin: UiConstants.DefaultMargin
                 }
 
-                font: UiConstants.SubtitleFont
+                font.pixelSize: 10
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
-                color: "black"
                 text: message_date
                 maximumLineCount: 1
             }
