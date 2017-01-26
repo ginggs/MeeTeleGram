@@ -103,9 +103,10 @@ void qtelegram::request_contact_list()
     tgl_do_update_contact_list(tlstate, on_contact_list_updated, this);
 }
 
-void qtelegram::get_dialog_list()
+void qtelegram::get_dialog_list(int offset)
 {
-    tgl_do_get_dialog_list(tlstate, 100, 0, on_dialog_list_received, this);
+    last_dialog = offset;
+    tgl_do_get_dialog_list(tlstate, 10000, offset, on_dialog_list_received, this);
 }
 
 void qtelegram::load_messages(QPeerId *peer)
@@ -614,7 +615,11 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
     if (!success)
         emit qtg->error(tls->error_code, tls->error);
 
-    qDebug() << "Dialogs received: " << size;
+    qDebug() << "Dialogs received: from = " << qtg->last_dialog << " num =" << size;
+    // using offset doesn't work as expected!
+    // todo: check for duplicate dialogs!
+//    if (size == 100)
+//        qtg->get_dialog_list(qtg->last_dialog + size);
     for (int i = 0; i < size; ++i)
     {
         tgl_peer_t *UC = tgl_peer_get(tls, peers[i]);

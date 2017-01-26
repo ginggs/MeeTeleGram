@@ -35,7 +35,7 @@ class qtelegram: public QObject
         Q_INVOKABLE void login();
 
         Q_INVOKABLE void request_contact_list();
-        Q_INVOKABLE void get_dialog_list();
+        Q_INVOKABLE void get_dialog_list(int offset = 0);
 
         Q_INVOKABLE void load_messages(QPeerId *peer);
 
@@ -73,6 +73,9 @@ class qtelegram: public QObject
 
         getvalues_callback getvalues_cb;
         void *getvalues_arg;
+
+        // dialogs
+        int last_dialog;
 
         QString auth_key_filename();
         void read_auth_file();
