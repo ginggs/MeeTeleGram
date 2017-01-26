@@ -109,20 +109,13 @@ void qtelegram::get_dialog_list(int offset)
     tgl_do_get_dialog_list(tlstate, 10000, offset, on_dialog_list_received, this);
 }
 
-void qtelegram::load_messages(QPeerId *peer)
+void qtelegram::load_messages(QPeerId *peer, int offset, int limit, bool offline)
 {
-    qDebug() << "Loading messages for peer: " << peer->id().peer_id;
-    {
-        QVariantMap msg;
-    msg.insert("message", QString::fromUtf8("سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا بابخهتشسیخهشسبی خهتسشیبخهتسشیب خهتشسیبخهتسیب خهسشی "
-            "شسیبخهت خهتشسیخهتسیب خ خهتهسی که در این کهسیب خهتشسی بخهتسی بخهستیب خهستیب "));
-    emit message_received(msg);
-    }
-    {
-        QVariantMap msg;
-    msg.insert("message", QString::fromUtf8("سسسس سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا ب "));
-    emit message_received(msg);
-    }
+    qDebug() << "Loading messages for peer: " << peer->id().peer_id
+            << " from: " << offset << " limit: " << limit << " offline: "
+            << offline;
+    tgl_do_get_history(tlstate, peer->id(), offset, limit, offline,
+        on_message_history, this);
 }
 
 void qtelegram::set_phone_number(QString number)
@@ -612,6 +605,23 @@ void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     }
 }
 
+void get_message(tgl_message *msg, QVariantMap &message)
+{
+    if (!msg)
+        return;
+    if (!(msg->flags & (TGLMF_EMPTY | TGLMF_DELETED))
+        && (msg->flags & TGLMF_CREATED) && !(msg->flags & TGLMF_SERVICE))
+    {
+//        qDebug() << "Adding message" ;
+        if (msg->message && strlen(msg->message))
+            message.insert("message", QString::fromUtf8(msg->message));
+        else if (msg->media.type != tgl_message_media_none)
+            message.insert("message", "[media]");
+//                print_media(&M->media);
+    }
+    message.insert("message_date", QDateTime::fromTime_t(msg->date));
+}
+
 void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
     int success, int size, tgl_peer_id_t peers[],
     tgl_message_id_t *last_msg_id[], int unread_count[])
@@ -658,27 +668,41 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
         if (msg)
-        {
-            qDebug() << "MSG FOUND";
-            print_message_gw(tls, msg);
-        }
-        if (msg)
-        {
-            if (!(msg->flags & (TGLMF_EMPTY | TGLMF_DELETED))
-                && (msg->flags & TGLMF_CREATED) && !(msg->flags & TGLMF_SERVICE))
-            {
-                qDebug() << "Adding message" ;
-//                dlg.insert("message", "folan");
-                if (msg->message && strlen(msg->message))
-                    dlg.insert("message", QString::fromUtf8(msg->message));
-                else if (msg->media.type != tgl_message_media_none)
-                    dlg.insert("message", "[media]");
-    //                print_media(&M->media);
-            }
-            dlg.insert("message_date", QDateTime::fromTime_t(msg->date));
-        }
+            get_message(msg, dlg);
         dlg.insert("is_contact", is_contact(UC));
 
         emit qtg->dialog_received(dlg);
+    }
+}
+
+void qtelegram::on_message_history(tgl_state *tls, void *extra, int success,
+    int size, struct tgl_message *list[])
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(extra);
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+
+    qDebug() << "Messages received: num =" << size;
+    for (int i = 0; i < size; ++i)
+    {
+        QVariantMap message;
+        get_message(list[i], message);
+        emit qtg->message_received(message);
+    }
+    if (size > 0)
+    {
+        // todo is it needed?
+//        if (tgl_cmp_peer_id(ML[0]->to_id, TLS->our_id))
+//        {
+//            tgl_do_messages_mark_read(TLS, ML[0]->to_id, ML[0]->server_id, 0, NULL,
+//                NULL);
+//        }
+//        else
+//        {
+//            tgl_do_messages_mark_read(TLS, ML[0]->from_id, ML[0]->server_id, 0, NULL,
+//                NULL);
+//        }
     }
 }

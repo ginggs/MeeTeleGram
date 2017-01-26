@@ -37,7 +37,8 @@ class qtelegram: public QObject
         Q_INVOKABLE void request_contact_list();
         Q_INVOKABLE void get_dialog_list(int offset = 0);
 
-        Q_INVOKABLE void load_messages(QPeerId *peer);
+        Q_INVOKABLE void load_messages(QPeerId *peer, int offset, int limit,
+            bool offline);
 
         Q_INVOKABLE void set_phone_number(QString number);
         Q_INVOKABLE void set_code(QString code);
@@ -125,6 +126,8 @@ class qtelegram: public QObject
         static void on_dialog_list_received(tgl_state *tls, void *extra,
             int success, int size, tgl_peer_id_t peers[],
             tgl_message_id_t *last_msg_id[], int unread_count[]);
+        static void on_message_history(tgl_state *tls, void *extra, int success,
+            int size, struct tgl_message *list[]);
 };
 
 #endif /* QTELEGRAM_H_ */

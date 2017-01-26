@@ -10,12 +10,11 @@ Sheet {
 
     function load(peer_id) {
         messages_model.model.clear()
-        telegram.load_messages(peer_id)
+        telegram.load_messages(peer_id, 0, 50, false)
     }
 
     onAccepted: {
         messages_model.model.clear()
-        console.log("CLEARED")
     }
 
     MessagesModel {
@@ -71,7 +70,7 @@ Sheet {
                 id: mouseArea
                 anchors.fill: background
                 onClicked: {
-                    console.log("Message clicked: " + message)
+                    console.log("Message clicked")
                 }
             }
         }
