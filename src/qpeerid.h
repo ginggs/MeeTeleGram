@@ -48,6 +48,4 @@ class QPeerId: public QObject
         tgl_peer_id_t m_id;
 };
 
-Q_DECLARE_METATYPE(QPeerId);
-
 #endif /* SRC_QPEERID_H_ */

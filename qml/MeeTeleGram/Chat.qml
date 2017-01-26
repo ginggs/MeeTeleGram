@@ -45,11 +45,12 @@ Sheet {
             Rectangle {
                 color: "blue"
                 width: parent.width
+                implicitHeight: message_label.implicitHeight + 20
                 Label {
                     id: message_label
-                    width: parent.width
                     anchors {
                         left: parent.left
+                        right: parent.right
                         leftMargin: UiConstants.DefaultMargin
                         topMargin: UiConstants.DefaultMargin
                         rightMargin: UiConstants.DefaultMargin
@@ -75,7 +76,11 @@ Sheet {
     }
 
     content: Column {
-        anchors.fill: parent
+        anchors {
+            fill: parent
+            leftMargin: UiConstants.DefaultMargin
+            rightMargin: UiConstants.DefaultMargin
+        }
         ListView {
             id: messages_list
             width: parent.width
@@ -119,7 +124,12 @@ Sheet {
         TextField {
             id: my_message
             height: 60
-            width: parent.width
+            anchors {
+                left: parent.left
+                right: parent.right
+                leftMargin: UiConstants.DefaultMargin
+                rightMargin: UiConstants.DefaultMargin
+            }
         }
     }
 

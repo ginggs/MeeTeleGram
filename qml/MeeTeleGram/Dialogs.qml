@@ -1,6 +1,5 @@
 import QtQuick 1.1
 import com.nokia.meego 1.0
-import hedayatvk.meetelegram 1.0
 
 Page {
     id: dialogs_page
@@ -119,7 +118,7 @@ Page {
                 font.pixelSize: 16
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
-                text: message
+                text: message ? message : ""
                 maximumLineCount: 1
             }
 
@@ -144,7 +143,7 @@ Page {
                 id: mouseArea
                 anchors.fill: background
                 onClicked: {
-                    console.log("Dialog clicked: " + name)
+                    console.log("Dialog clicked: " + name + peer_id.type)
                     chat_window.open()
                     chat_window.load(peer_id)
                 }

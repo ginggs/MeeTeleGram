@@ -37,7 +37,7 @@ class qtelegram: public QObject
         Q_INVOKABLE void request_contact_list();
         Q_INVOKABLE void get_dialog_list();
 
-        Q_INVOKABLE void load_messages(QPeerId peer);
+        Q_INVOKABLE void load_messages(QPeerId *peer);
 
         Q_INVOKABLE void set_phone_number(QString number);
         Q_INVOKABLE void set_code(QString code);

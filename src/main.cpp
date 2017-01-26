@@ -76,7 +76,7 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     app->installTranslator(&qtTranslator);
     app->setLayoutDirection(locale.textDirection());
 
-    qmlRegisterType<QPeerId>("hedayatvk.meetelegram", 1, 0, "PeerId");
+    qmlRegisterType<QPeerId>();
 
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");

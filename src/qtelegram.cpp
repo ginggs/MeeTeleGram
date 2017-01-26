@@ -108,9 +108,9 @@ void qtelegram::get_dialog_list()
     tgl_do_get_dialog_list(tlstate, 100, 0, on_dialog_list_received, this);
 }
 
-void qtelegram::load_messages(QPeerId peer)
+void qtelegram::load_messages(QPeerId *peer)
 {
-    qDebug() << "Loading messages for peer: " << peer.id().peer_id;
+    qDebug() << "Loading messages for peer: " << peer->id().peer_id;
     QVariantMap msg;
     msg.insert("message", QString::fromUtf8("سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا بابخهتشسیخهشسبی خهتسشیبخهتسشیب خهتشسیبخهتسیب خهسشی "
             "شسیبخهت خهتشسیخهتسیب خ خهتهسی که در این کهسیب خهتشسی بخهتسی بخهستیب خهستیب "));
@@ -614,6 +614,7 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
     if (!success)
         emit qtg->error(tls->error_code, tls->error);
 
+    qDebug() << "Dialogs received: " << size;
     for (int i = 0; i < size; ++i)
     {
         tgl_peer_t *UC = tgl_peer_get(tls, peers[i]);
@@ -639,8 +640,8 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
                 qDebug() << "PEER TYPE: " << tgl_get_peer_type(peers[i]);
                 break;
         }
-        QPeerId id(peers[i]);
-        dlg.insert("peer_id", QVariant::fromValue(id));
+        QPeerId *idptr = new QPeerId(peers[i], this);
+        dlg.insert("peer_id", QVariant::fromValue((QObject*)idptr));
         dlg.insert("unread", unread_count[i]);
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
