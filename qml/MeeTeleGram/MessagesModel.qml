@@ -13,7 +13,6 @@ Item {
     Connections {
         target: telegram
         onMessage_received: {
-            console.log("Message received: " + message["message"])
             messages_model.insert(0, message)
         }
     }

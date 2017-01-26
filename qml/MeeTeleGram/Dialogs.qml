@@ -1,5 +1,6 @@
 import QtQuick 1.1
 import com.nokia.meego 1.0
+import com.nokia.extras 1.0
 
 Page {
     id: dialogs_page
@@ -88,7 +89,7 @@ Page {
 
             Label {
                 id: contactName
-                width: parent.width - (contactPic.width + UiConstants.DefaultMargin + 20)
+                width: parent.width - (unread_bubble.width + contactPic.width + UiConstants.DefaultMargin + 20)
                 anchors {
                     left: contactImage.right
                     leftMargin: 20
@@ -101,8 +102,19 @@ Page {
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
                 color: "black"
-                text: name + "(" + unread + ")"
+                text: name
                 maximumLineCount: 1
+            }
+
+            CountBubble {
+                id: unread_bubble
+                anchors {
+                    left: contactName.right
+                    top: parent.top
+                }
+
+                largeSized: true
+                value: unread
             }
 
             Label {
