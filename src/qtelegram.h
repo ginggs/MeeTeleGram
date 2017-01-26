@@ -13,6 +13,7 @@
 #include <QStringList>
 #include <QVariantMap>
 #include <tgl.h>
+#include "qpeerid.h"
 
 /**
  *
@@ -36,6 +37,8 @@ class qtelegram: public QObject
         Q_INVOKABLE void request_contact_list();
         Q_INVOKABLE void get_dialog_list();
 
+        Q_INVOKABLE void load_messages(QPeerId peer);
+
         Q_INVOKABLE void set_phone_number(QString number);
         Q_INVOKABLE void set_code(QString code);
         Q_INVOKABLE void set_current_pass(QString pass);
@@ -58,6 +61,7 @@ class qtelegram: public QObject
         void cur_and_new_password_requested();
 
         void dialog_received(QVariantMap dialog);
+        void message_received(QVariantMap message);
 
     private:
         static tgl_update_callback qtg_update_cb;

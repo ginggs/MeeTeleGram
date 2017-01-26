@@ -76,11 +76,11 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     app->installTranslator(&qtTranslator);
     app->setLayoutDirection(locale.textDirection());
 
+    qmlRegisterType<QPeerId>("hedayatvk.meetelegram", 1, 0, "PeerId");
+
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");
     viewer.rootContext()->setContextProperty("settings", &settings);
-
-    qmlRegisterType<QPeerId>();
 
     QString confdir = QDesktopServices::storageLocation(
         QDesktopServices::DataLocation) + "/" APP_NAME "/";

@@ -1,5 +1,6 @@
 import QtQuick 1.1
 import com.nokia.meego 1.0
+import hedayatvk.meetelegram 1.0
 
 Page {
     id: dialogs_page
@@ -144,6 +145,8 @@ Page {
                 anchors.fill: background
                 onClicked: {
                     console.log("Dialog clicked: " + name)
+                    chat_window.open()
+                    chat_window.load(peer_id)
                 }
             }
         }

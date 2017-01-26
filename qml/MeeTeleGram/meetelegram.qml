@@ -32,6 +32,13 @@ PageStackWindow {
         onRejected: Qt.quit()
     }
 
+    Chat {
+        id: chat_window
+        onAccepted: {
+            console.log("Close chat window")
+        }
+    }
+
     Connections {
         target: telegram
         onLogged_in: {

@@ -108,6 +108,15 @@ void qtelegram::get_dialog_list()
     tgl_do_get_dialog_list(tlstate, 100, 0, on_dialog_list_received, this);
 }
 
+void qtelegram::load_messages(QPeerId peer)
+{
+    qDebug() << "Loading messages for peer: " << peer.id().peer_id;
+    QVariantMap msg;
+    msg.insert("message", QString::fromUtf8("سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا بابخهتشسیخهشسبی خهتسشیبخهتسشیب خهتشسیبخهتسیب خهسشی "
+            "شسیبخهت خهتشسیخهتسیب خ خهتهسی که در این کهسیب خهتشسی بخهتسی بخهستیب خهستیب "));
+    emit message_received(msg);
+}
+
 void qtelegram::set_phone_number(QString number)
 {
     const char *vs[] = { number.toUtf8().constData() };
