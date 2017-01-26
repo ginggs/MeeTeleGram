@@ -112,10 +112,17 @@ void qtelegram::get_dialog_list(int offset)
 void qtelegram::load_messages(QPeerId *peer)
 {
     qDebug() << "Loading messages for peer: " << peer->id().peer_id;
-    QVariantMap msg;
+    {
+        QVariantMap msg;
     msg.insert("message", QString::fromUtf8("سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا بابخهتشسیخهشسبی خهتسشیبخهتسشیب خهتشسیبخهتسیب خهسشی "
             "شسیبخهت خهتشسیخهتسیب خ خهتهسی که در این کهسیب خهتشسی بخهتسی بخهستیب خهستیب "));
     emit message_received(msg);
+    }
+    {
+        QVariantMap msg;
+    msg.insert("message", QString::fromUtf8("سسسس سلام خوبی؟ \n چه خبرا؟ چرا نیایی؟ کجایی؟ بیا ب "));
+    emit message_received(msg);
+    }
 }
 
 void qtelegram::set_phone_number(QString number)

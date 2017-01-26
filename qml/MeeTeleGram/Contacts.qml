@@ -144,6 +144,7 @@ Page {
                     verticalCenter: parent.verticalCenter
                     top: parent.top
                     right: textblock.right
+                    rightMargin: 30
                 }
 
                 text: section

@@ -28,6 +28,7 @@ Sheet {
         Item {
             id: listItem
             width: parent.width
+            implicitHeight: message_rect.implicitHeight + 20
 
             BorderImage {
                 id: background
@@ -43,6 +44,7 @@ Sheet {
             }
 
             Rectangle {
+                id: message_rect
                 color: "blue"
                 width: parent.width
                 implicitHeight: message_label.implicitHeight + 20
@@ -127,8 +129,8 @@ Sheet {
             anchors {
                 left: parent.left
                 right: parent.right
-                leftMargin: UiConstants.DefaultMargin
-                rightMargin: UiConstants.DefaultMargin
+                leftMargin: UiConstants.DefaultMargin*2
+                rightMargin: UiConstants.DefaultMargin*2
             }
         }
     }
