@@ -16,6 +16,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <QtGui/QApplication>
 #include <QtCore/QLocale>
 #include <QtCore/QTranslator>
@@ -60,6 +61,12 @@ void myMessageOutput(QtMsgType type, const char *msg)
 
 Q_DECL_EXPORT int main(int argc, char *argv[])
 {
+    QString stdout_log = QDesktopServices::storageLocation(
+        QDesktopServices::HomeLocation) + "/MyDocs/meetelegram.log";
+    QString stderr_log = QDesktopServices::storageLocation(
+        QDesktopServices::HomeLocation) + "/MyDocs/meetelegram.log.stderr";
+    freopen(stdout_log.toUtf8().constData(), "w", stdout);
+    freopen(stderr_log.toUtf8().constData(), "w", stderr);
     qInstallMsgHandler(myMessageOutput);
 
     QScopedPointer<QApplication> app(createApplication(argc, argv));
