@@ -10,7 +10,7 @@ Sheet {
 
     function load(peer_id) {
         messages_model.model.clear()
-        telegram.load_messages(peer_id, 0, 10, false)
+        telegram.load_messages(peer_id, 0, 50, false)
         messages_list.positionViewAtEnd()
     }
 

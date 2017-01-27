@@ -13,7 +13,7 @@ Item {
     Connections {
         target: telegram
         onDialog_received: {
-            console.log("Dialog received: name: " + dialog["name"])
+//            console.log("Dialog received: name: " + dialog["name"])
             dialogs_model.append(dialog)
             ready = true
         }
