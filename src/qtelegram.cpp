@@ -76,6 +76,12 @@ qtelegram::~qtelegram()
     free(tlstate);
 }
 
+bool qtelegram::is_our_id(QPeerId *id)
+{
+    qDebug(__PRETTY_FUNCTION__);
+    return tgl_cmp_peer_id(id->id(), tlstate->our_id) == 0;
+}
+
 void qtelegram::login()
 {
     read_auth_file();
@@ -605,13 +611,30 @@ void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     }
 }
 
-void get_message(tgl_message *msg, QVariantMap &message)
+static inline QVariant mkidvar(const tgl_peer_id_t &id, QObject *parent = NULL)
 {
+    return QVariant::fromValue((QObject *)new QPeerId(id, parent));
+}
+
+void qtelegram::get_message(tgl_message *msg, QVariantMap &message)
+{
+    qDebug(__PRETTY_FUNCTION__);
     if (!msg)
         return;
+//    if (!(M->flags & TGLMF_CREATED)) { qDebug("CREATED"); return; }
+//    if (M->flags & TGLMF_SERVICE)
+//    {
+//        print_service_message(tls, M);
+//        return;
+//    }
     if (!(msg->flags & (TGLMF_EMPTY | TGLMF_DELETED))
         && (msg->flags & TGLMF_CREATED) && !(msg->flags & TGLMF_SERVICE))
     {
+        if (!tgl_get_peer_type(msg->to_id))
+        {
+            qDebug("Bad msg\n");
+            return;
+        }
 //        qDebug() << "Adding message" ;
         if (msg->message && strlen(msg->message))
             message.insert("message", QString::fromUtf8(msg->message));
@@ -620,6 +643,57 @@ void get_message(tgl_message *msg, QVariantMap &message)
 //                print_media(&M->media);
     }
     message.insert("message_date", QDateTime::fromTime_t(msg->date));
+    QVariant fromid = mkidvar(msg->from_id, this);
+    QVariant toid = mkidvar(msg->to_id, this);
+    message.insert("from_id", fromid);
+    message.insert("to_id", toid);
+
+    QVariant dialogid;
+    switch (tgl_get_peer_type(msg->to_id))
+    {
+        case TGL_PEER_USER:
+            if (msg->flags & TGLMF_OUT)
+                dialogid = toid;
+            else
+                dialogid = fromid;
+            break;
+        case TGL_PEER_ENCR_CHAT:
+            dialogid = toid;
+//            tgl_peer_t *P = tgl_peer_get(tls, M->to_id);
+//            assert(P);
+//            printf(" %s", P->print_name);
+            break;
+        case TGL_PEER_CHAT:
+            dialogid = toid;
+            break;
+        case TGL_PEER_CHANNEL:
+            dialogid = toid;
+//            if (tgl_get_peer_type (M->from_id) == TGL_PEER_USER)
+//            {
+//                printf (" ");
+//                print_user_name (M->from_id, tgl_peer_get (tls, M->from_id));
+//            }
+            break;
+        default:
+            qDebug("Dialog ID not found!");
+            break;
+    }
+    if (dialogid.isValid())
+        message.insert("dialog_id", dialogid);
+//    if (M->flags & TGLMF_OUT)
+    message.insert("unread", static_cast<bool>(msg->flags & TGLMF_UNREAD));
+
+    if (tgl_get_peer_type(msg->fwd_from_id) == TGL_PEER_USER)
+    {
+        message.insert("forward", true);
+        message.insert("forward_from", mkidvar(msg->fwd_from_id));
+    }
+    if (msg->reply_id)
+    {
+        message.insert("reply", true);
+        message.insert("reply_id", msg->reply_id);
+    }
+    message.insert("mention", static_cast<bool>(msg->flags & TGLMF_MENTION));
 }
 
 void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
@@ -668,7 +742,7 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
         if (msg)
-            get_message(msg, dlg);
+            qtg->get_message(msg, dlg);
         dlg.insert("is_contact", is_contact(UC));
 
         emit qtg->dialog_received(dlg);
@@ -688,7 +762,7 @@ void qtelegram::on_message_history(tgl_state *tls, void *extra, int success,
     for (int i = 0; i < size; ++i)
     {
         QVariantMap message;
-        get_message(list[i], message);
+        qtg->get_message(list[i], message);
         emit qtg->message_received(message);
     }
     if (size > 0)

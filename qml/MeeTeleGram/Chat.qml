@@ -45,7 +45,7 @@ Sheet {
 
             Rectangle {
                 id: message_rect
-                color: "blue"
+                color: telegram.is_our_id(from_id) ? "blue" : "white"
                 width: parent.width
                 implicitHeight: message_label.implicitHeight + 20
                 Label {
@@ -61,7 +61,7 @@ Sheet {
     //                font: UiConstants.TitleFont
                     wrapMode: Text.Wrap
                     elide: Text.ElideNone
-                    color: "black"
+                    color: telegram.is_our_id(from_id) ? "white" : "black"
                     text: message
                 }
             }

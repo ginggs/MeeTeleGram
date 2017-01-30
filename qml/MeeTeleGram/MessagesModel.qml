@@ -6,6 +6,11 @@ Item {
 
     property bool ready: false
 
+    function add_new_message(msg)
+    {
+        messages_model.append(msg)
+    }
+
     ListModel {
         id: messages_model
     }

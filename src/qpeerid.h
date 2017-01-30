@@ -41,6 +41,7 @@ class QPeerId: public QObject
 
         Q_INVOKABLE Type type() const;
         Q_INVOKABLE int getId() const { return m_id.peer_id; }
+        Q_INVOKABLE bool is_equal(QPeerId *id);
 
         tgl_peer_id_t id() const { return m_id; }
 

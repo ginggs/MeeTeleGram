@@ -32,6 +32,8 @@ class qtelegram: public QObject
             QObject *parent = NULL);
         ~qtelegram();
 
+        Q_INVOKABLE bool is_our_id(QPeerId *id);
+
         Q_INVOKABLE void login();
 
         Q_INVOKABLE void request_contact_list();
@@ -63,6 +65,7 @@ class qtelegram: public QObject
 
         void dialog_received(QVariantMap dialog);
         void message_received(QVariantMap message);
+        void new_message(QVariantMap message);
 
     private:
         static tgl_update_callback qtg_update_cb;
@@ -97,7 +100,10 @@ class qtelegram: public QObject
 
         void timerEvent(QTimerEvent *event);
 
+        void get_message(tgl_message *msg, QVariantMap &message);
+
         // main tgl callbacks
+        static void new_message_gw(tgl_state *tls, tgl_message *m);
         static void print_message_gw(tgl_state *tls, tgl_message *m);
         static void marked_read_upd(tgl_state *tls, int num, tgl_message *list[]);
         static void logprintf(const char *format, ...);

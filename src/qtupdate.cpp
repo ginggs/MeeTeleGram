@@ -42,7 +42,7 @@ tgl_update_callback qtelegram::qtg_update_cb =
     channel_update_gw,
     user_update_gw,
     secret_chat_update_gw,
-    print_message_gw, // msg_receive
+    new_message_gw, // msg_receive
     our_id_gw,
     //void (*notification)(tgl_state *tls, const char *type, const char *message);
     0,
@@ -638,6 +638,25 @@ static void print_message(tgl_state *tls, tgl_message *M)
         print_media(&M->media);
     }
     printf("\n");
+}
+
+void qtelegram::new_message_gw(tgl_state *tls, tgl_message *m)
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(tls->ev_base);
+    if (!qtg->enable_events)
+    {
+        qDebug("\t!binlog_read, returning");
+        return;
+    }
+    if (tgl_get_peer_type(m->to_id) == TGL_PEER_ENCR_CHAT)
+    {
+        qtg->write_secret_chat_file();
+    }
+
+    QVariantMap msg;
+    qtg->get_message(m, msg);
+    emit qtg->new_message(msg);
 }
 
 void qtelegram::print_message_gw(tgl_state *tls, tgl_message *m)

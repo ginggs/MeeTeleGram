@@ -45,3 +45,8 @@ QPeerId::Type QPeerId::type() const
     }
     return Unknown;
 }
+
+bool QPeerId::is_equal(QPeerId *id)
+{
+    return tgl_cmp_peer_id(this->id(), id->id()) == 0;
+}
