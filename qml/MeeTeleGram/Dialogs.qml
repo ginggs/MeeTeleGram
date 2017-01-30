@@ -115,6 +115,7 @@ Page {
 
                 largeSized: true
                 value: unread
+                visible: unread
             }
 
             Label {
