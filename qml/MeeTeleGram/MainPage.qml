@@ -61,7 +61,7 @@ Page {
 
         icon: "/opt/MeeTeleGram/icons/MeeTeleGram.png"
         titleText: qsTr("About MeeTeleGram 0.0")
-        message: qsTr("Copyright (C) 2015 <br/><br/>    \
+        message: qsTr("Copyright (C) 2015-2017 <br/><br/>    \
             <b>Hedayat Vatankhah</b>  <br/><br/>        \
             License: GNU GPLv3+<br/><br/>               \
             This program comes with ABSOLUTELY NO WARRANTY. \
