@@ -77,7 +77,8 @@ Sheet {
         }
     }
 
-    content: Column {
+    content: Item {
+        id: chat_column
         anchors {
             fill: parent
             leftMargin: UiConstants.DefaultMargin
@@ -85,8 +86,14 @@ Sheet {
         }
         ListView {
             id: messages_list
-            width: parent.width
-            height: parent.height - my_message.height
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                bottom: my_message.top
+                leftMargin: UiConstants.DefaultMargin*2
+                rightMargin: UiConstants.DefaultMargin*2
+            }
             model: messages_model.model
             delegate: message_delegate
     //        section.property: "name"
@@ -122,6 +129,7 @@ Sheet {
     //            }
     //        }
         }
+        ScrollDecorator { flickableItem: messages_list }
 
         TextField {
             id: my_message
@@ -129,13 +137,13 @@ Sheet {
             anchors {
                 left: parent.left
                 right: parent.right
-                leftMargin: UiConstants.DefaultMargin*2
-                rightMargin: UiConstants.DefaultMargin*2
+                bottom: parent.bottom
+                leftMargin: UiConstants.DefaultMargin
+                rightMargin: UiConstants.DefaultMargin
             }
         }
     }
 
-    ScrollDecorator { flickableItem: messages_list }
 //    FastScroll {
 //        listView: contact_list
 //        alignment: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.AlignLeft : Qt.AlignRight
