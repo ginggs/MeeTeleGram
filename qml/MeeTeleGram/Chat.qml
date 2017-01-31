@@ -87,8 +87,6 @@ Sheet {
         id: chat_column
         anchors {
             fill: parent
-            leftMargin: UiConstants.DefaultMargin
-            rightMargin: UiConstants.DefaultMargin
         }
         ListView {
             id: messages_list
