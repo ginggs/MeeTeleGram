@@ -84,6 +84,7 @@ bool qtelegram::is_our_id(QPeerId *id)
 
 void qtelegram::login()
 {
+    qDebug(__PRETTY_FUNCTION__);
     read_auth_file();
     read_state_file();
     read_secret_chat_file();
@@ -106,17 +107,20 @@ void qtelegram::login()
 
 void qtelegram::request_contact_list()
 {
+    qDebug(__PRETTY_FUNCTION__);
     tgl_do_update_contact_list(tlstate, on_contact_list_updated, this);
 }
 
 void qtelegram::get_dialog_list(int offset)
 {
+    qDebug(__PRETTY_FUNCTION__);
     last_dialog = offset;
     tgl_do_get_dialog_list(tlstate, 10000, offset, on_dialog_list_received, this);
 }
 
 void qtelegram::load_messages(QPeerId *peer, int offset, int limit, bool offline)
 {
+    qDebug(__PRETTY_FUNCTION__);
     qDebug() << "Loading messages for peer: " << peer->id().peer_id
             << " from: " << offset << " limit: " << limit << " offline: "
             << offline;
@@ -600,7 +604,6 @@ void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
         user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
     }
     user_names.sort();
-    qDebug() << user_names;
 
     if (!success)
         emit qtg->error(tls->error_code, tls->error);
