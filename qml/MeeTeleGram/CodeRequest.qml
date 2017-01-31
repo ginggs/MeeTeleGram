@@ -27,20 +27,19 @@ Sheet {
             Row {
                 anchors.fill: parent
 //                width: parent.width
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 10
                 Label {
                     id: code_label
                     text: qsTr("Code:")
-                    anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                 }
                 TextField {
                     id: input_code
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
-                    anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - parent.children[0].width - 20 - parent.spacing
-                    anchors.left: code_label.right
+//                    anchors.left: code_label.right
                 }
             }
 //        }
