@@ -738,7 +738,7 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         }
         QPeerId *idptr = new QPeerId(peers[i], qtg);
         dlg.insert("peer_id", QVariant::fromValue((QObject*)idptr));
-        dlg.insert("unread", unread_count[i]);
+        dlg.insert("unread_count", unread_count[i]);
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);
         if (msg)

@@ -30,8 +30,8 @@ Item {
                     dialogs_model.move(i, 0, 1)
                     dialogs_model.setProperty(0, "message", message["message"])
                     if (message["unread"])
-                        dialogs_model.setProperty(0, "unread",
-                                                  dialogs_model.get(0)["unread"]+1)
+                        dialogs_model.setProperty(0, "unread_count",
+                                                  dialogs_model.get(0)["unread_count"]+1)
                 }
             }
         }
