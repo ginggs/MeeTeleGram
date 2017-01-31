@@ -1,3 +1,11 @@
+meetelegram (0.2) unstable; urgency=medium
+
+  * Make it possible to send simple text messages
+  * Dialogs list is now updated when new messages arrive
+  * Small UI enhancements
+
+ -- Hedayat Vatankhah <hedayat.fwd@gmail.com>  Tue, 31 Jan 2017 23:15:58 +0330
+
 meetelegram (0.1) unstable; urgency=low
 
   * Initial release

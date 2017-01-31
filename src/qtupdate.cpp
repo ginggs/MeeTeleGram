@@ -56,16 +56,20 @@ static void print_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
 {
     if (!C)
         printf("chat#%d", tgl_get_peer_id(id));
-    else
+    else if (C->chat.title)
         printf("%s", C->chat.title);
+    else
+        printf("DBG_NO_TITLE");
 }
 
 static void print_encr_chat_name(tgl_peer_id_t id, tgl_peer_t *C)
 {
     if (!C)
         printf("encr_chat#%d", tgl_get_peer_id(id));
-    else
+    else if (C->print_name)
         printf("%s", C->print_name);
+    else
+        printf("DBG_NO_PRINT_NAME");
 }
 
 static void print_channel_name(tgl_peer_id_t id, tgl_peer_t *C)
@@ -80,10 +84,12 @@ static void print_channel_name(tgl_peer_id_t id, tgl_peer_t *C)
     {
         printf("channel#%d", tgl_get_peer_id(id));
     }
-    else
+    else if (C->channel.title)
     {
         printf("%s", C->channel.title);
     }
+    else
+        printf("DBG_NO_CHANNEL_TITLE");
 }
 
 void print_user_name(tgl_peer_id_t id, tgl_peer_t *U)
@@ -116,11 +122,17 @@ void print_user_name(tgl_peer_id_t id, tgl_peer_t *U)
 //        }
         else if (!U->user.first_name || !strlen(U->user.first_name))
         {
-            printf("%s", U->user.last_name);
+            if (!U->user.last_name)
+                printf("DBG_NO_LAST_NAME");
+            else
+                printf("%s", U->user.last_name);
         }
         else if (!U->user.last_name || !strlen(U->user.last_name))
         {
-            printf("%s", U->user.first_name);
+            if (!U->user.first_name)
+                printf("DBG_NO_FIRST_NAME");
+            else
+                printf("%s", U->user.first_name);
         }
         else
         {
