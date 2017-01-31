@@ -137,11 +137,90 @@ Sheet {
             anchors {
                 left: parent.left
                 right: parent.right
-                bottom: parent.bottom
+                bottom: input_button_holder.top
                 leftMargin: UiConstants.DefaultMargin
                 rightMargin: UiConstants.DefaultMargin
             }
         }
+
+        Rectangle {
+            id: input_button_holder
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            width: parent.width
+            height: 72 //showSendButton ? 72 : 0
+            color: theme.inverted? "#1A1A1A" : "white"
+            clip: true
+
+            MouseArea {
+                id: input_button_holder_area
+                anchors.fill: parent
+                onClicked: {
+//                    sendMediaWindow.opacity = 0
+//                    showSendButton=true;
+//                    forceFocusToChatText()
+                }
+            }
+
+
+            Rectangle {
+                height: 1
+                width: parent.width
+                x:0; y:0
+                color: "gray"
+                opacity: 0.4
+            }
+
+//            Button
+//            {
+//                id: emoji_button
+//                //platformStyle: ButtonStyle { inverted: true }
+//                width:50
+//                height:50
+//                iconSource: "../common/images/emoji/32/E415.png"
+//                anchors.left: parent.left
+//                anchors.leftMargin: 16
+//                anchors.verticalCenter: send_button.verticalCenter
+//                onClicked: {
+//                    sendMediaWindow.opacity = 0
+//                    emojiDialog.openDialog(chat_text);
+//                    showSendButton=true;
+//                    //chat_text.lastPosition = chat_text.cursorPosition
+//                }
+//            }
+
+//            Button {
+//                id: media_button
+//                anchors.left: emoji_button.right
+//                anchors.leftMargin: 12
+//                anchors.verticalCenter: parent.verticalCenter
+//                width: 50
+//                height: width
+//                iconSource: theme.inverted ? "../common/images/attachment-white.png" : "../common/images/attachment.png"
+
+//                onClicked: {
+//                    if (sendMediaWindow.visible) sendMediaWindow.opacity = 0
+//                    else sendMediaWindow.opacity = 1
+//                    showSendButton=true;
+//                    forceFocusToChatText()
+//                }
+//            }
+
+            Button
+            {
+                id:send_button
+                platformStyle: ButtonStyle { inverted: true }
+                width:160
+                height:50
+                text: qsTr("Send")
+                anchors.right: parent.right
+                anchors.rightMargin: 16
+                y: 10
+//                onClicked: sendButtonClicked();
+            }
+
+        }
+
     }
 
 //    FastScroll {
