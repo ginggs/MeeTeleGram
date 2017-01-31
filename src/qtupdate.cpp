@@ -764,7 +764,7 @@ void qtelegram::marked_read_upd(tgl_state *tls, int num, tgl_message *list[])
     }
 //  if (log_level < 1) { return; }
 //
-    print_read_list(tls, num, list);
+//    print_read_list(tls, num, list);
 }
 
 void qtelegram::logprintf(const char *format, ...)

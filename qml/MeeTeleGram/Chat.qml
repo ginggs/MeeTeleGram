@@ -144,8 +144,6 @@ Sheet {
                 left: parent.left
                 right: parent.right
                 bottom: input_button_holder.top
-                leftMargin: UiConstants.DefaultMargin
-                rightMargin: UiConstants.DefaultMargin
             }
         }
 
@@ -223,8 +221,11 @@ Sheet {
                 anchors.rightMargin: 16
                 y: 10
                 onClicked: {
-                    if (my_message.text.length > 0 )
+                    if (my_message.text.length > 0 ) {
+                        console.log("Sending message: " + my_message.text)
                         telegram.send_msg(internal.peer, my_message.text)
+                    } else
+                        console.log("Not sending empty message")
                 }
             }
 

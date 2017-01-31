@@ -89,7 +89,7 @@ Page {
 
             Label {
                 id: contactName
-                width: parent.width - (unread_bubble.width + contactPic.width + UiConstants.DefaultMargin + 50)
+                width: parent.width - (unread_bubble.width + contactPic.width + UiConstants.DefaultMargin)
                 anchors {
                     left: contactImage.right
                     leftMargin: 20
@@ -120,7 +120,7 @@ Page {
 
             Label {
                 id: lastMsg
-                width: parent.width - (contactPic.width + UiConstants.DefaultMargin + 20)
+                width: parent.width - (contactPic.width + UiConstants.DefaultMargin)
                 anchors {
                     left: contactImage.right
                     leftMargin: 20
