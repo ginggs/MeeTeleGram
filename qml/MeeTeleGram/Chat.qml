@@ -8,10 +8,16 @@ Sheet {
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
 
+    QtObject {
+        id: internal
+        property variant peer
+    }
+
     function load(peer_id) {
         messages_model.model.clear()
         telegram.load_messages(peer_id, 0, 50, false)
         messages_list.positionViewAtEnd()
+        internal.peer = peer_id
     }
 
     onAccepted: {
@@ -91,8 +97,8 @@ Sheet {
                 right: parent.right
                 top: parent.top
                 bottom: my_message.top
-                leftMargin: UiConstants.DefaultMargin*2
-                rightMargin: UiConstants.DefaultMargin*2
+                leftMargin: UiConstants.DefaultMargin * 2
+                rightMargin: UiConstants.DefaultMargin * 2
             }
             model: messages_model.model
             delegate: message_delegate
@@ -131,7 +137,7 @@ Sheet {
         }
         ScrollDecorator { flickableItem: messages_list }
 
-        TextField {
+        TextArea {
             id: my_message
             height: 60
             anchors {
@@ -148,7 +154,7 @@ Sheet {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             width: parent.width
-            height: 72 //showSendButton ? 72 : 0
+            height: my_message.activeFocus ? 72 : 0
             color: theme.inverted? "#1A1A1A" : "white"
             clip: true
 
@@ -216,7 +222,10 @@ Sheet {
                 anchors.right: parent.right
                 anchors.rightMargin: 16
                 y: 10
-//                onClicked: sendButtonClicked();
+                onClicked: {
+                    if (my_message.text.length > 0 )
+                        telegram.send_msg(internal.peer, my_message.text)
+                }
             }
 
         }

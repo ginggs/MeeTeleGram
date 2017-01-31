@@ -128,6 +128,39 @@ void qtelegram::load_messages(QPeerId *peer, int offset, int limit, bool offline
         on_message_history, this);
 }
 
+//void qtelegram::print_success_gw(struct tgl_state *TLSR, void *extra, int success)
+//{
+//    if (!success) { print_fail (ev); return; }
+//    else { print_success (ev); return; }
+//}
+
+void qtelegram::message_sent_status_gw(struct tgl_state *tls,
+                void *extra, int success, struct tgl_message *msg)
+{
+    qDebug(__PRETTY_FUNCTION__);
+    qtelegram *qtg = reinterpret_cast<qtelegram *>(extra);
+
+    if (!success)
+        emit qtg->error(tls->error_code, tls->error);
+
+    qtg->write_secret_chat_file();
+}
+
+void qtelegram::send_msg(tgl_peer_id_t peer_id, QString text_message,
+    unsigned long long flags, struct tl_ds_reply_markup *reply_markup)
+{
+    qDebug(__PRETTY_FUNCTION__);
+    QByteArray msg = text_message.toUtf8();
+    tgl_do_send_message(tlstate, peer_id, msg.constData(), msg.length(),
+        flags/*TGL_SEND_MSG_FLAG_REPLY(reply_id) | disable_msg_preview | do_html*/,
+        reply_markup, message_sent_status_gw, this);
+}
+
+void qtelegram::send_msg(QPeerId *peer, QString text_message)
+{
+    send_msg(peer->id(), text_message, 0, NULL);
+}
+
 void qtelegram::set_phone_number(QString number)
 {
     const char *vs[] = { number.toUtf8().constData() };

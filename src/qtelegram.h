@@ -41,6 +41,9 @@ class qtelegram: public QObject
 
         Q_INVOKABLE void load_messages(QPeerId *peer, int offset, int limit,
             bool offline);
+        Q_INVOKABLE void send_msg(tgl_peer_id_t peer_id, QString text_message,
+            unsigned long long flags, struct tl_ds_reply_markup *reply_markup);
+        Q_INVOKABLE void send_msg(QPeerId *peer, QString text_message);
 
         Q_INVOKABLE void set_phone_number(QString number);
         Q_INVOKABLE void set_code(QString code);
@@ -134,6 +137,8 @@ class qtelegram: public QObject
             tgl_message_id_t *last_msg_id[], int unread_count[]);
         static void on_message_history(tgl_state *tls, void *extra, int success,
             int size, struct tgl_message *list[]);
+        static void message_sent_status_gw(struct tgl_state *tls,
+            void *extra, int success, struct tgl_message *msg);
 };
 
 #endif /* QTELEGRAM_H_ */
