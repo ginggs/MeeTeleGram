@@ -222,6 +222,7 @@ Sheet {
                     if (my_message.text.length > 0 ) {
                         console.log("Sending message: " + my_message.text)
                         telegram.send_msg(internal.peer, my_message.text)
+                        my_message.text = ""
                     } else
                         console.log("Not sending empty message")
                 }
