@@ -5,9 +5,10 @@
  *      Author: Hedayat Vatankhah <hedayat.fwd@gmail.com>.
  */
 
+#include <cassert>
 #include <QObject>
 #include <QTcpSocket>
-#include <cassert>
+#include <QTimerEvent>
 #include <tgl.h>
 
 static connection *create_connection(tgl_state *tls, const char *host, int port,
@@ -65,6 +66,7 @@ struct connection: public QObject
         QByteArray write_buffer;
         int server_port;
         bool active;
+        int reconnect_timer;
 
     private slots:
         void connected();
@@ -80,12 +82,12 @@ struct connection: public QObject
         void ready_read();
 
     private:
-        void fail()
+        void fail(bool do_rotate_port = true)
         {
             if (!active)
                 return;
             methods->close(tl_state, this);
-            int new_port = rotate_port();
+            int new_port = do_rotate_port ? rotate_port() : server_port;
             QByteArray addr = socket.peerName().toUtf8();
             connect_to_server(addr.data(), new_port);
         }
@@ -108,12 +110,13 @@ struct connection: public QObject
         void try_rpc_read();
         int read_lookup(void *data, int len);
         void send_buffered_data();
+        void timerEvent(QTimerEvent *event);
 };
 
 connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
     mtproto_methods *mp, QObject *parent) :
         QObject(parent), tl_state(tls), session(s), dc(dc), socket(this),
-        methods(mp), server_port(0), active(false)
+        methods(mp), server_port(0), active(false), reconnect_timer(0)
 {
     socket.setSocketOption(QAbstractSocket::LowDelayOption, 1);
     socket.setSocketOption(QAbstractSocket::KeepAliveOption, 1);
@@ -229,8 +232,14 @@ void connection::error(QAbstractSocket::SocketError socketError)
     qDebug() << "error: " << socketError;
     if (socketError == QAbstractSocket::SocketTimeoutError)
         fail();
-    else
-        qDebug("Not retrying!");
+    else if (!reconnect_timer)
+    {
+        int pause_sec = 10;
+        qDebug() << "Reconnecting in " << pause_sec << " seconds";
+        reconnect_timer = startTimer(pause_sec * 1000);
+        if (!reconnect_timer)
+            qDebug("Cannot create a reconnection timer!");
+    }
 }
 
 void connection::host_found()
@@ -359,7 +368,16 @@ void connection::send_buffered_data()
     else
         write_buffer.remove(0, n);
     qDebug() << "Queue " << n << " bytes from internal write buffer, "
-            << write_buffer.length() << " bytes remain.";
+             << write_buffer.length() << " bytes remain.";
+}
+
+void connection::timerEvent(QTimerEvent *event)
+{
+    if (event->timerId() == reconnect_timer)
+    {
+        reconnect_timer = 0;
+        fail(false);
+    }
 }
 
 static connection *create_connection(tgl_state *tls, const char *host, int port,
