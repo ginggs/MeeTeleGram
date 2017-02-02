@@ -234,7 +234,7 @@ void connection::error(QAbstractSocket::SocketError socketError)
         fail();
     else if (!reconnect_timer)
     {
-        int pause_sec = 10;
+        int pause_sec = 30;
         qDebug() << "Reconnecting in " << pause_sec << " seconds";
         reconnect_timer = startTimer(pause_sec * 1000);
         if (!reconnect_timer)

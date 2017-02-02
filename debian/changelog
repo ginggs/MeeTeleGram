@@ -1,3 +1,10 @@
+meetelegram (0.2.1) unstable; urgency=medium
+
+  * Fix a crash (usually) on laggy internet connections
+  * Don't give up trying to connect to a server when cannot connect
+
+ -- Hedayat Vatankhah <hedayat.fwd@gmail.com>  Fri, 03 Feb 2017 02:05:44 +0330
+
 meetelegram (0.2) unstable; urgency=medium
 
   * Make it possible to send simple text messages
