@@ -48,8 +48,12 @@ struct connection: public QObject
         int write(const void *data, int len);
         int read(void *data, int len);
         void flush() { socket.flush(); }
+        void stop();
 
-    public:
+        tgl_session *get_session() { return session; }
+        tgl_dc *get_dc() { return dc; }
+
+    private:
         tgl_state *tl_state;
         tgl_session *session;
         tgl_dc *dc;
@@ -60,6 +64,7 @@ struct connection: public QObject
         QByteArray read_buffer;
         QByteArray write_buffer;
         int server_port;
+        bool active;
 
     private slots:
         void connected();
@@ -77,6 +82,8 @@ struct connection: public QObject
     private:
         void fail()
         {
+            if (!active)
+                return;
             methods->close(tl_state, this);
             int new_port = rotate_port();
             QByteArray addr = socket.peerName().toUtf8();
@@ -105,8 +112,8 @@ struct connection: public QObject
 
 connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
     mtproto_methods *mp, QObject *parent) :
-        QObject(parent), tl_state(tls), socket(this), session(s), dc(dc),
-        methods(mp), server_port(0)
+        QObject(parent), tl_state(tls), session(s), dc(dc), socket(this),
+        methods(mp), server_port(0), active(false)
 {
     socket.setSocketOption(QAbstractSocket::LowDelayOption, 1);
     socket.setSocketOption(QAbstractSocket::KeepAliveOption, 1);
@@ -129,6 +136,7 @@ connection::connection(tgl_state *tls, tgl_session *s, tgl_dc *dc,
 void connection::connect_to_server(const char *host, int port)
 {
     qDebug(__PRETTY_FUNCTION__);
+    active = true;
     qDebug() << "Connecting to: " << host << ':' << port;
     server_port = port;
     socket.connectToHost(host, port);
@@ -193,6 +201,12 @@ int connection::read(void *data, int len)
     }
 }
 
+void connection::stop()
+{
+    active = false;
+    socket.close();
+}
+
 void connection::connected()
 {
     char byte = 0xef;
@@ -241,7 +255,8 @@ void connection::about_to_close()
 void connection::bytes_written(qint64 bytes)
 {
     qDebug() << bytes << " byte(s) sent.";
-    send_buffered_data();
+    if (active)
+        send_buffered_data();
 }
 
 void connection::read_channel_finished()
@@ -380,12 +395,12 @@ static void incr_out_packet_num(connection *c)
 
 static tgl_dc *get_dc(connection *c)
 {
-    return c->dc;
+    return c->get_dc();
 }
 
 static tgl_session *get_session(connection *c)
 {
-    return c->session;
+    return c->get_session();
 }
 
 static void flush_out(connection *c)
@@ -396,6 +411,7 @@ static void flush_out(connection *c)
 static void conn_free(connection *c)
 {
     qDebug(__PRETTY_FUNCTION__);
+    c->stop();
     c->deleteLater();
 }
 
