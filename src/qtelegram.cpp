@@ -163,38 +163,45 @@ void qtelegram::send_msg(QPeerId *peer, QString text_message)
 
 void qtelegram::set_phone_number(QString number)
 {
-    const char *vs[] = { number.toUtf8().constData() };
+    QByteArray utf8 = number.toUtf8();
+    const char *vs[] = { utf8.constData() };
     call_getvalue_callback(vs);
 }
 
 void qtelegram::set_code(QString code)
 {
-    const char *vs[] = { code.toUtf8().constData() };
+    QByteArray utf8 = code.toUtf8();
+    const char *vs[] = { utf8.constData() };
     call_getvalue_callback(vs);
 }
 
 void qtelegram::set_current_pass(QString pass)
 {
-    const char *vs[] = { pass.toUtf8().constData() };
+    QByteArray utf8 = pass.toUtf8();
+    const char *vs[] = { utf8.constData() };
     call_getvalue_callback(vs);
 }
 
 void qtelegram::set_register_info(QString name, QString lastname)
 {
-    const char *vs[] = { "y", name.toUtf8().constData(),
-            lastname.toUtf8().constData() };
+    QByteArray utf8 = name.toUtf8();
+    QByteArray utf8_2 = lastname.toUtf8();
+    const char *vs[] = { "y", utf8.constData(), utf8_2.constData() };
     call_getvalue_callback(vs);
 }
 
 void qtelegram::set_new_password(QString pass)
 {
-    const char *vs[] = { pass.toUtf8().constData() };
+    QByteArray utf8 = pass.toUtf8();
+    const char *vs[] = { utf8.constData() };
     call_getvalue_callback(vs);
 }
 
 void qtelegram::set_cur_and_new_password(QString curp, QString newp)
 {
-    const char *vs[] = { curp.toUtf8().constData(), newp.toUtf8().constData() };
+    QByteArray utf8 = curp.toUtf8();
+    QByteArray utf8_2 = newp.toUtf8();
+    const char *vs[] = { utf8.constData(), utf8_2.constData() };
     call_getvalue_callback(vs);
 }
 
@@ -206,7 +213,7 @@ QString qtelegram::auth_key_filename()
 void qtelegram::read_auth_file()
 {
     qDebug(__PRETTY_FUNCTION__);
-    int auth_file_fd = open(auth_key_filename().toUtf8().data(), O_CREAT | O_RDWR, 0600);
+    int auth_file_fd = open(auth_key_filename().toUtf8().constData(), O_CREAT | O_RDWR, 0600);
     if (auth_file_fd < 0)
     {
         empty_auth_file();
@@ -253,7 +260,7 @@ void qtelegram::read_auth_file()
 void qtelegram::write_auth_file()
 {
     qDebug(__PRETTY_FUNCTION__);
-    int auth_file_fd = open(auth_key_filename().toUtf8().data(), O_CREAT | O_RDWR, 0600);
+    int auth_file_fd = open(auth_key_filename().toUtf8().constData(), O_CREAT | O_RDWR, 0600);
     assert(auth_file_fd >= 0);
     int x = DC_SERIALIZED_MAGIC;
     assert(write(auth_file_fd, &x, 4) == 4);
@@ -353,7 +360,7 @@ QString qtelegram::state_filename()
 void qtelegram::read_state_file()
 {
     qDebug(__PRETTY_FUNCTION__);
-    int state_file_fd = open(state_filename().toUtf8().data(), O_CREAT | O_RDWR, 0600);
+    int state_file_fd = open(state_filename().toUtf8().constData(), O_CREAT | O_RDWR, 0600);
     if (state_file_fd < 0)
     {
         return;
@@ -408,7 +415,7 @@ void qtelegram::write_state_file()
     wpts = tlstate->pts;
     wqts = tlstate->qts;
     wdate = tlstate->date;
-    int state_file_fd = open(state_filename().toUtf8().data(), O_CREAT | O_RDWR, 0600);
+    int state_file_fd = open(state_filename().toUtf8().constData(), O_CREAT | O_RDWR, 0600);
     if (state_file_fd < 0)
     {
 //    logprintf ("Can not write state file '%s': %m\n", get_state_filename ());

@@ -89,7 +89,7 @@ struct connection: public QObject
             methods->close(tl_state, this);
             int new_port = do_rotate_port ? rotate_port() : server_port;
             QByteArray addr = socket.peerName().toUtf8();
-            connect_to_server(addr.data(), new_port);
+            connect_to_server(addr.constData(), new_port);
         }
 
         int rotate_port()
