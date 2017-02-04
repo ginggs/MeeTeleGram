@@ -530,9 +530,16 @@ void qtelegram::read_secret_chat(int fd, int v)
 
 void qtelegram::call_getvalue_callback(const char *values[])
 {
-    getvalues_cb(tlstate, values, getvalues_arg);
+    getvalues_callback getvalues_cb_cur = getvalues_cb;
+    void *getvalues_arg_cur = getvalues_arg;
+
+    // free variables for new callbacks, which might be called while we
+    // call the callback function
     getvalues_cb = NULL;
     getvalues_arg = NULL;
+
+    // the callback might call get_values again
+    getvalues_cb_cur(tlstate, values, getvalues_arg_cur);
 }
 
 void qtelegram::timerEvent(QTimerEvent* event)
