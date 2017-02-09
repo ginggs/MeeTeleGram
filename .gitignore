@@ -6,3 +6,4 @@ STATE_FILE
 icons/
 .settings/org.eclipse.cdt.codan.core.prefs
 *.log
+/build/
