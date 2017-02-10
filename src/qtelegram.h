@@ -52,6 +52,9 @@ class qtelegram: public QObject
         Q_INVOKABLE void set_new_password(QString pass);
         Q_INVOKABLE void set_cur_and_new_password(QString curp, QString newp);
 
+        // useful for debugging
+        Q_INVOKABLE QString get_str_from_console(QString msg);
+
     signals:
         void error(int error_code, QString error);
         void logged_in();

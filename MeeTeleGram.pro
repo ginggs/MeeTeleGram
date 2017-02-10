@@ -54,11 +54,25 @@ export(server_pubkey.path)
 
 INSTALLS += splash server_pubkey
 
-INCLUDEPATH += tgl/ tgl/build
-LIBS += -L $$PWD/tgl/build/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
+TGL_BUILD_PATH = build_$$QMAKE_HOST.arch
+# workaround for meego scratchbox
+contains(QMAKE_HOST.arch, x86_64):!isEmpty(MEEGO_VERSION_MAJOR) {
+    TGL_BUILD_PATH = build_n9_x86
+}
+
+INCLUDEPATH += tgl/ tgl/$$TGL_BUILD_PATH
+LIBS += -L $$PWD/tgl/$$TGL_BUILD_PATH/libs/ -ltgl -lz -lrt -lm   -lssl -lcrypto
 
 lupdate_only {
 SOURCES += qml/MeeTeleGram/*
+  isEmpty(MEEGO_VERSION_MAJOR) {
+    SOURCES += qml/MeeTeleGram_PC/*
+  }
+}
+
+#QMAKE_CXXFLAGS +=NO_LOG_REDIRECT
+isEmpty(MEEGO_VERSION_MAJOR) {
+    QMAKE_CXXFLAGS += "-D PC_BUILD"
 }
 
 TRANSLATIONS += l10n/MeeTeleGram.fa.ts

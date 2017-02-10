@@ -8,6 +8,8 @@
 #include "qtelegram.h"
 
 #include <cassert>
+#include <iostream>
+#include <string>
 #include <unistd.h>
 #include <fcntl.h>
 #include <QDateTime>
@@ -203,6 +205,14 @@ void qtelegram::set_cur_and_new_password(QString curp, QString newp)
     QByteArray utf8_2 = newp.toUtf8();
     const char *vs[] = { utf8.constData(), utf8_2.constData() };
     call_getvalue_callback(vs);
+}
+
+QString qtelegram::get_str_from_console(QString msg)
+{
+    std::cout << msg.toUtf8().constData();
+    std::string response;
+    std::cin >> response;
+    return QString::fromStdString(response);
 }
 
 QString qtelegram::auth_key_filename()
@@ -768,17 +778,17 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
         switch (tgl_get_peer_type(peers[i]))
         {
             case TGL_PEER_USER:
-                qDebug() << "User";
+                qDebug() << "Peer type: User";
                 dlg.insert("type", "user");
                 dlg.insert("name", get_user_name(peers[i], UC));
                 break;
             case TGL_PEER_CHAT:
-                qDebug() << "Chat";
+                qDebug() << "Peer type: Chat";
                 dlg.insert("type", "chat");
                 dlg.insert("name", get_chat_name(peers[i], UC));
                 break;
             case TGL_PEER_CHANNEL:
-                qDebug() << "Channel";
+                qDebug() << "Peer type: Channel";
                 dlg.insert("type", "channel");
                 dlg.insert("name", get_channel_name(peers[i], UC));
                 break;

@@ -40,6 +40,10 @@
 #define MEETELEGRAM_APP_ID 44097
 #define MEETELEGRAM_VERSION "0.0.0"
 
+#ifdef PC_BUILD
+#define NO_LOG_REDIRECT
+#endif
+
 
 void myMessageOutput(QtMsgType type, const char *msg)
 {
@@ -67,8 +71,10 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
         QDesktopServices::HomeLocation) + "/MyDocs/meetelegram.log";
     QString stderr_log = QDesktopServices::storageLocation(
         QDesktopServices::HomeLocation) + "/MyDocs/meetelegram.log.stderr";
+#ifndef NO_LOG_REDIRECT
     freopen(stdout_log.toUtf8().constData(), "w", stdout);
     freopen(stderr_log.toUtf8().constData(), "w", stderr);
+#endif
     qInstallMsgHandler(myMessageOutput);
 
     QScopedPointer<QApplication> app(createApplication(argc, argv));
@@ -103,7 +109,11 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     viewer.rootContext()->setContextProperty("telegram", &qtlg);
 
     viewer.setOrientation(QmlApplicationViewer::ScreenOrientationAuto);
+#ifdef PC_BUILD
+    viewer.setMainQmlFile(QLatin1String("qml/MeeTeleGram_PC/meetelegram.qml"));
+#else
     viewer.setMainQmlFile(QLatin1String("qml/MeeTeleGram/meetelegram.qml"));
+#endif
     viewer.showExpanded();
 
     return app->exec();
