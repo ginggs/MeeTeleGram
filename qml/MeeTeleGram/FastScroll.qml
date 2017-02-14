@@ -145,11 +145,11 @@ Item {
         Rectangle {
             id: magnifier
             objectName: "popup"
-            opacity: rail.dragging ? 0.4 : 0
+            opacity: rail.dragging ? 0.8 : 0
             anchors.left: parent.left
             anchors.right: parent.right
             height: magnifierLabel.height * 1.5
-            color: "gray"
+            color: "black"
 
             function positionAtY(yCoord) {
                 magnifier.y = Math.max(dragArea.drag.minimumY, Math.min(yCoord - magnifier.height/2, dragArea.drag.maximumY));
@@ -164,7 +164,7 @@ Item {
 
                 font.pointSize: primaryFontSize * 1.5
                 //font.family: "Nokia Pure Text Bold"
-                color: "black"
+                color: "white"
 
                 text: internal.currentSection
             }

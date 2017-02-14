@@ -160,7 +160,6 @@ Page {
         }
     }
 
-//    ScrollDecorator { flickableItem: contact_list }
     FastScroll {
         listView: contact_list
         alignment: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.AlignLeft : Qt.AlignRight
