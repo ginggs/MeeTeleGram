@@ -38,9 +38,7 @@ Rectangle {
 
         /////////////////////////////////////////////
         onContact_list_received: {
-            console.log("Contact list received: num = " + contacts.length)
-            for (var i = 0; i < contacts.length; ++i)
-                console.log("Contact: " + contacts[i])
+            console.log("UI: Contact list received")
         }
         onDialog_received: {
             console.log("Dialog received: " + dialog)

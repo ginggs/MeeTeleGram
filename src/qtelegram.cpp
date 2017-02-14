@@ -654,26 +654,19 @@ void qtelegram::on_contact_list_updated(tgl_state *tls, void *callback_extra,
     qDebug(__PRETTY_FUNCTION__);
     qtelegram *qtg = reinterpret_cast<qtelegram *>(callback_extra);
 
-    QStringList user_names;
-    printf("Contact list received: ");
-    for (int i = size - 1; i >= 0; i--)
-    {
-        user_names << get_user_name(contacts[i]->id, (tgl_peer_t *) contacts[i]);
-    }
-    user_names.sort();
 
     if (!success)
         emit qtg->error(tls->error_code, tls->error);
     else
     {
-        emit qtg->contact_list_received(user_names);
-        emit qtg->contact_list_received(contacts, size);
+        qDebug("Contact list received: ");
+        for (int i = size - 1; i >= 0; i--)
+            qtg->contacts.add_contact(contact(contacts[i]));
+#ifdef PC_BUILD
+        qtg->contacts.print();
+#endif
+        emit qtg->contact_list_received();
     }
-}
-
-static inline QVariant mkidvar(const tgl_peer_id_t &id, QObject *parent = NULL)
-{
-    return QVariant::fromValue((QObject *)new QPeerId(id, parent));
 }
 
 void qtelegram::get_message(tgl_message *msg, QVariantMap &message)
@@ -703,8 +696,8 @@ void qtelegram::get_message(tgl_message *msg, QVariantMap &message)
 //                print_media(&M->media);
     }
     message.insert("message_date", QDateTime::fromTime_t(msg->date));
-    QVariant fromid = mkidvar(msg->from_id, this);
-    QVariant toid = mkidvar(msg->to_id, this);
+    QVariant fromid = QPeerId::mk_var(msg->from_id, this);
+    QVariant toid = QPeerId::mk_var(msg->to_id, this);
     message.insert("from_id", fromid);
     message.insert("to_id", toid);
 
@@ -746,7 +739,7 @@ void qtelegram::get_message(tgl_message *msg, QVariantMap &message)
     if (tgl_get_peer_type(msg->fwd_from_id) == TGL_PEER_USER)
     {
         message.insert("forward", true);
-        message.insert("forward_from", mkidvar(msg->fwd_from_id));
+        message.insert("forward_from", QPeerId::mk_var(msg->fwd_from_id));
     }
     if (msg->reply_id)
     {
@@ -796,8 +789,7 @@ void qtelegram::on_dialog_list_received(tgl_state *tls, void *extra,
                 qDebug() << "PEER TYPE: " << tgl_get_peer_type(peers[i]);
                 break;
         }
-        QPeerId *idptr = new QPeerId(peers[i], qtg);
-        dlg.insert("peer_id", QVariant::fromValue((QObject*)idptr));
+        dlg.insert("peer_id", QPeerId::mk_var(peers[i], qtg));
         dlg.insert("unread_count", unread_count[i]);
         assert(last_msg_id[i] != NULL);
         tgl_message *msg = tgl_message_get(tls, last_msg_id[i]);

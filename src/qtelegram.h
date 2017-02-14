@@ -8,6 +8,7 @@
 #ifndef QTELEGRAM_H_
 #define QTELEGRAM_H_
 
+#include <src/contacts_model.h>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -21,6 +22,7 @@
 class qtelegram: public QObject
 {
         Q_OBJECT;
+        Q_PROPERTY(contacts_model *contacts READ get_contacts_model);
 
     private:
         typedef void (*getvalues_callback)(tgl_state *tls, const char *string[],
@@ -37,6 +39,7 @@ class qtelegram: public QObject
         Q_INVOKABLE void login();
 
         Q_INVOKABLE void request_contact_list();
+        Q_INVOKABLE contacts_model *get_contacts_model() { return &contacts; }
         Q_INVOKABLE void get_dialog_list(int offset = 0);
 
         Q_INVOKABLE void load_messages(QPeerId *peer, int offset, int limit,
@@ -60,8 +63,7 @@ class qtelegram: public QObject
         void logged_in();
         void started();
         void login_failed(int error_code, QString error);
-        void contact_list_received(tgl_user *contacts[], int size);
-        void contact_list_received(QStringList contacts);
+        void contact_list_received();
         void phone_number_requested();
         void code_requested();
         void current_pass_requested();
@@ -86,6 +88,8 @@ class qtelegram: public QObject
 
         // dialogs
         int last_dialog;
+
+        contacts_model contacts;
 
         QString auth_key_filename();
         void read_auth_file();

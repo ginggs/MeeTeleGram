@@ -11,6 +11,7 @@
 #include <tgl-layout.h>
 #include <QObject>
 #include <QMetaType>
+#include <QVariant>
 
 /**
  *
@@ -34,6 +35,11 @@ class QPeerId: public QObject
         Q_ENUMS(Type);
 
     public:
+        static QVariant mk_var(const tgl_peer_id_t &id, QObject *parent = NULL)
+        {
+            return QVariant::fromValue((QObject *)new QPeerId(id, parent));
+        }
+
         QPeerId(tgl_peer_id_t p_id = tgl_peer_id_t(), QObject *parent = NULL);
         QPeerId(const QPeerId &p): QObject() { m_id = p.m_id; }
 
@@ -48,5 +54,6 @@ class QPeerId: public QObject
     private:
         tgl_peer_id_t m_id;
 };
+
 
 #endif /* SRC_QPEERID_H_ */

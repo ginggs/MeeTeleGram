@@ -4,15 +4,13 @@ import com.nokia.meego 1.0
 Page {
     id: contacts_page
 
-    ContactsModel {
-        id: contacts_model
-    }
+    property bool ready: false
 
     BusyIndicator {
         id: spinner
         platformStyle: BusyIndicatorStyle { size: "large" }
         anchors.centerIn: parent
-        running: !contacts_model.ready
+        running: !ready
         visible: running
     }
 
@@ -54,7 +52,7 @@ Page {
                 Image {
                     id: contactPic
                     anchors.fill: parent
-                    source: avatar
+                    source: profile_pic ? profile_pic : ""
 
                     onStatusChanged: if (status === Image.Error)
                                          contactPic.source = ""
@@ -117,9 +115,9 @@ Page {
     ListView {
         id: contact_list
         anchors.fill: parent
-        model: contacts_model.model
+        model: telegram.get_contacts_model()
         delegate: contact_msg_delegate
-        section.property: "name"
+        section.property: "contact_group"
         section.criteria: ViewSection.FirstCharacter
         section.delegate: Item {
             id: textblock
@@ -154,7 +152,15 @@ Page {
         }
     }
 
-    ScrollDecorator { flickableItem: contact_list }
+    Connections {
+        target: telegram
+        onContact_list_received: {
+            console.log("UI: Contact list received")
+            ready = true
+        }
+    }
+
+//    ScrollDecorator { flickableItem: contact_list }
     FastScroll {
         listView: contact_list
         alignment: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.AlignLeft : Qt.AlignRight

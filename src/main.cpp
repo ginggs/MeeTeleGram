@@ -29,6 +29,7 @@
 #include "setting.h"
 #include "qtelegram.h"
 #include "qpeerid.h"
+#include "contacts_model.h"
 
 #define APP_NAME "MeeTeleGram"
 /*
@@ -91,7 +92,9 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     app->installTranslator(&qtTranslator);
     app->setLayoutDirection(locale.textDirection());
 
+    qRegisterMetaType<contacts_model *>("contacts_model *");
     qmlRegisterType<QPeerId>();
+    qmlRegisterType<contacts_model>();
 
     QmlApplicationViewer viewer;
     Settings settings("MeeTeleGram", "settings.ini");
