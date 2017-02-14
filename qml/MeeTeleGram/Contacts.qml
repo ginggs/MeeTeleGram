@@ -118,7 +118,7 @@ Page {
         model: telegram.get_contacts_model()
         delegate: contact_msg_delegate
         section.property: "contact_group"
-        section.criteria: ViewSection.FirstCharacter
+        section.criteria: ViewSection.FullString
         section.delegate: Item {
             id: textblock
             width: contact_list.width

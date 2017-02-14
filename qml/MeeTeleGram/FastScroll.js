@@ -22,13 +22,19 @@ function initSectionData(list) {
     _sections = [];
     var current = "",
         prop = list.section.property,
-        item;
+        item,
+        item_prop;
 
     if (list.section.criteria == ViewSection.FullString) {
         for (var i = 0, count = list.model.count; i < count; i++) {
-            item = list.model.get(i);
-            if (item[prop] !== current) {
-                current = item[prop];
+            if (list.model.getProperty)
+                item_prop = list.model.getProperty(i, prop)
+            else {
+                item = list.model.get(i)
+                item_prop = item[prop]
+            }
+            if (item_prop !== current) {
+                current = item_prop;
                 _sections.push(current);
                 sectionData.push({ index: i, header: current });
             }

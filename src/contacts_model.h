@@ -8,9 +8,11 @@
 #ifndef SRC_CONTACTS_MODEL_H_
 #define SRC_CONTACTS_MODEL_H_
 
+#include <map>
 #include <QAbstractListModel>
 #include <QList>
 #include <QVariant>
+#include <QVariantMap>
 #include "contact.h"
 
 /**
@@ -19,6 +21,7 @@
 class contacts_model: public QAbstractListModel
 {
         Q_OBJECT
+        Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
     public:
         enum role_t {
@@ -43,15 +46,16 @@ class contacts_model: public QAbstractListModel
         bool setData(const QModelIndex &index, const QVariant &value, int role =
                 Qt::EditRole);
 
+        Q_INVOKABLE QVariant getProperty(int idx, QString prop);
+
         void print();
 
-    protected:
-        QHash<int, QByteArray> roleNames() const;
+    signals:
+        void countChanged();
 
     private:
         QList<contact> m_contacts;
+        std::map<QByteArray, role_t> prop_map;
 };
-
-Q_DECLARE_METATYPE(contacts_model*);
 
 #endif /* SRC_CONTACTS_MODEL_H_ */

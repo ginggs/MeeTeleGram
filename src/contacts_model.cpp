@@ -12,14 +12,15 @@
 
 contacts_model::contacts_model(QObject *parent): QAbstractListModel(parent)
 {
+    prop_map["name"] = role_t::Name;
+    prop_map["phone_number"] = role_t::PhoneNumber;
+    prop_map["contact_group"] = role_t::ContactGroup;
+    prop_map["peer_id"] = role_t::PeerID;
+    prop_map["profile_pic"] = role_t::ProfilePicture;
+
     QHash<int, QByteArray> roles;
-//    roles[role::FirstName] = "first_name";
-//    roles[role::LastName] = "last_name";
-    roles[role_t::Name] = "name";
-    roles[role_t::PhoneNumber] = "phone_number";
-    roles[role_t::ContactGroup] = "contact_group";
-    roles[role_t::PeerID] = "peer_id";
-    roles[role_t::ProfilePicture] = "profile_pic";
+    for (auto p = prop_map.begin(); p != prop_map.end(); ++p)
+        roles[p->second] = p->first;
     setRoleNames(roles);
 }
 
@@ -37,6 +38,7 @@ void contacts_model::add_contact(const contact &c)
     beginInsertRows(QModelIndex(), idx, idx);
     m_contacts.insert(pos, c);
     endInsertRows();
+    emit countChanged();
 }
 
 Qt::ItemFlags contacts_model::flags(const QModelIndex &index) const
@@ -85,20 +87,21 @@ bool contacts_model::setData(const QModelIndex &index, const QVariant &value,
     return false;
 }
 
-QHash<int, QByteArray> contacts_model::roleNames() const
+QVariant contacts_model::getProperty(int idx, QString prop)
 {
     qDebug(__PRETTY_FUNCTION__);
-    QHash<int, QByteArray> roles;
-    roles[role_t::Name] = "name";
-    roles[role_t::PhoneNumber] = "phone_number";
-    roles[role_t::ContactGroup] = "contact_group";
-    roles[role_t::PeerID] = "peer_id";
-    roles[role_t::ProfilePicture] = "profile_pic";
-    return roles;
+    auto p = prop_map.find(prop.toAscii());
+    if (p == prop_map.end())
+    {
+        qDebug() << "ERRRR, property not found: " << prop;
+        return QVariant();
+    }
+    return data(createIndex(idx, 0), p->second);
 }
 
 void contacts_model::print()
 {
+    qDebug(__PRETTY_FUNCTION__);
     for (int i = 0; i < m_contacts.size(); ++i)
     {
         qDebug() << "Contact: " << m_contacts[i].contact_group() << ' '

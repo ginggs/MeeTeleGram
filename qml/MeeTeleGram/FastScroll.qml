@@ -219,6 +219,15 @@ Item {
 
             if (listView.model.itemsRemoved)
                 listView.model.itemsRemoved.connect(dirtyObserver);
+
+            if (listView.model.dataChanged)
+                listView.model.dataChanged.connect(dirtyObserver);
+
+            if (listView.model.layoutChanged)
+                listView.model.layoutChanged.connect(dirtyObserver);
+
+            if (listView.model.rowsMoved)
+                listView.model.rowsMoved.connect(dirtyObserver);
         }
 
         function adjustContentPosition(y) {
